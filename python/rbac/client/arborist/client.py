@@ -130,11 +130,18 @@ class ArboristClient(RBACClient):
         return response.status_code == 200
 
     @_arborist_retry()
-    def auth_request(self, data):
+    def auth_request(self, jwt, service, method, resource):
         """
         Return:
             bool: authorization response
         """
+        data = {
+            "user": {"token": jwt},
+            "request": {
+                "resource": resource,
+                "action": {"service": service, "method": method},
+            },
+        }
         response = ArboristResponse(
             requests.post(self._auth_url.rstrip("/") + "/request", json=data)
         )
@@ -276,10 +283,6 @@ class ArboristClient(RBACClient):
         ]
 
     @_arborist_retry()
-    def delete_resource(self, path):
-        return _request_get_json(requests.delete(self._resource_url + path))
-
-    @_arborist_retry()
     def create_role(self, role_json):
         """
         Create a new role in arborist (does not affect fence database or
@@ -370,7 +373,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_policy(self, path):
-        return _request_get_json(requests.delete(self._policy_url + path))
+        return ArboristResponse(requests.delete(self._policy_url + path))
 
     @_arborist_retry()
     def create_policy(self, policy_json, skip_if_exists=True):
