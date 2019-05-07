@@ -130,17 +130,19 @@ class ArboristClient(RBACClient):
         return response.status_code == 200
 
     @_arborist_retry()
-    def auth_request(self, jwt, service, method, resource):
+    def auth_request(self, jwt, service, method, resources):
         """
         Return:
             bool: authorization response
         """
+        if isinstance(resources, (str, unicode)):
+            resources = [resources]
         data = {
             "user": {"token": jwt},
-            "request": {
+            "requests": [{
                 "resource": resource,
                 "action": {"service": service, "method": method},
-            },
+            } for resource in resources],
         }
         response = ArboristResponse(
             requests.post(self._auth_url.rstrip("/") + "/request", json=data)
