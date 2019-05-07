@@ -9,6 +9,7 @@ import backoff
 from cdislogging import get_logger
 import requests
 
+from rbac import string_types
 from rbac.client.arborist.errors import (
     ArboristError,
     ArboristUnhealthyError,
@@ -135,7 +136,7 @@ class ArboristClient(RBACClient):
         Return:
             bool: authorization response
         """
-        if isinstance(resources, (str, unicode)):
+        if isinstance(resources, string_types):
             resources = [resources]
         data = {
             "user": {"token": jwt},
