@@ -465,8 +465,7 @@ class ArboristClient(RBACClient):
             # already exists
             return
         elif response.code != 201:
-            msg = response.json.get("error", "unhelpful response from arborist")
-            self.logger.error(msg)
+            self.logger.error(response.error_msg)
 
 
     @_arborist_retry()
@@ -481,7 +480,7 @@ class ArboristClient(RBACClient):
         url = "{}/{}/resources".format(self._user_url, username)
         response = ArboristResponse(requests.get(url))
         if response.code != 200:
-            raise ArboristError(response.json.get("error", "unhelpful response from arborist"))
+            raise ArboristError(response.error_msg)
         return response.json["resources"]
 
 
@@ -494,12 +493,9 @@ class ArboristClient(RBACClient):
         request = {"policy": policy_id}
         response = ArboristResponse(requests.post(url, json=request))
         if response.code != 204:
-            msg = response.json.get("error", "unhelpful response from arborist")
-            if isinstance("error", dict):
-                msg = response.json["error"].get("message", msg)
             self.logger.error(
                 "could not grant policy `{}` to user `{}`: {}".format(
-                    policy_id, username, msg
+                    policy_id, username, response.error_msg
                 )
             )
             return None
@@ -511,9 +507,8 @@ class ArboristClient(RBACClient):
         url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
         response = ArboristResponse(requests.delete(url))
         if response.code != 204:
-            msg = response.json.get("error", "unhelpful response from arborist")
             self.logger.error(
-                "could not revoke policies from user `{}`: {}`".format(username, msg)
+                "could not revoke policies from user `{}`: {}`".format(username, response.error_msg)
             )
             return None
         self.logger.info("revoked all policies from user `{}`".format(username))
@@ -536,8 +531,7 @@ class ArboristClient(RBACClient):
             # already exists; this is ok, but leave warning
             self.logger.warn("group `{}` already exists in arborist".format(name))
         if response.code != 201:
-            msg = response.json.get("error", "unhelpful response from arborist")
-            self.logger.error("could not create group {}: {}".format(name, msg))
+            self.logger.error("could not create group {}: {}".format(name, response.error_msg))
             return None
         self.logger.info("created new group `{}`".format(name))
         if users:
@@ -551,12 +545,9 @@ class ArboristClient(RBACClient):
         request = {"policy": policy_id}
         response = ArboristResponse(requests.post(url, json=request))
         if response.code != 204:
-            msg = response.json.get("error", "unhelpful response from arborist")
-            if isinstance(response.json, dict) and "error" in response.json:
-                msg = response.json["error"].get("message", msg)
             self.logger.error(
                 "could not grant policy `{}` to group `{}`: {}".format(
-                    policy_id, group_name, msg
+                    policy_id, group_name, response.error_msg
                 )
             )
             return None
