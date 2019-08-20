@@ -220,7 +220,7 @@ class ArboristClient(RBACClient):
         #     /resource/parent/new_resource
         #
 
-        path = self._resource_url + parent_path
+        path = self._resource_url + urllib.parse.quote(parent_path)
         if create_parents:
             path = path + "?p"
 
@@ -251,7 +251,7 @@ class ArboristClient(RBACClient):
         Return:
             dict: JSON representation of the resource
         """
-        url = self._resource_url + path
+        url = self._resource_url + urllib.parse.quote(path)
         response = ArboristResponse(requests.get(url))
         if response.code == 404:
             return None
@@ -263,7 +263,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def update_resource(self, path, resource_json, create_parents=False):
-        url = self._resource_url + path
+        url = self._resource_url + urllib.parse.quote(path)
         if create_parents:
             url = url + "?p"
         response = ArboristResponse(requests.put(url, json=resource_json))
@@ -279,7 +279,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_resource(self, path):
-        url = self._resource_url + path
+        url = self._resource_url + urllib.parse.quote(path)
         response = ArboristResponse(requests.delete(url))
         if response.code not in [204, 404]:
             raise ArboristError
@@ -359,7 +359,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def update_role(self, role_id, role_json):
-        url = self._role_url + role_id
+        url = self._role_url + urllib.parse.quote(role_id)
         response = ArboristResponse(requests.put(url, json=role_json))
         if not response.successful:
             msg = (
@@ -373,7 +373,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_role(self, role_id):
-        response = ArboristResponse(requests.delete(self._role_url + role_id))
+        response = ArboristResponse(requests.delete(self._role_url + urllib.parse.quote(role_id)))
         if response.code == 404:
             # already doesn't exist, this is fine
             return
@@ -387,14 +387,14 @@ class ArboristClient(RBACClient):
         """
         Return the JSON representation of a policy with this ID.
         """
-        response = ArboristResponse(requests.get(self._policy_url + policy_id))
+        response = ArboristResponse(requests.get(self._policy_url + urllib.parse.quote(policy_id)))
         if response.code == 404:
             return None
         return response.json
 
     @_arborist_retry()
     def delete_policy(self, path):
-        return ArboristResponse(requests.delete(self._policy_url + path))
+        return ArboristResponse(requests.delete(self._policy_url + urllib.parse.quote(path)))
 
     @_arborist_retry()
     def create_policy(self, policy_json, skip_if_exists=True):
@@ -437,7 +437,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def update_policy(self, policy_id, policy_json):
-        url = self._policy_url + policy_id
+        url = self._policy_url + urllib.parse.quote(policy_id)
         response = ArboristResponse(requests.put(url, json=policy_json))
         if not response.successful:
             msg = (
@@ -477,7 +477,7 @@ class ArboristClient(RBACClient):
         Return:
             List[str]: list of resource paths which the user has any access to
         """
-        url = "{}/{}/resources".format(self._user_url, username)
+        url = "{}/{}/resources".format(self._user_url, urllib.parse.quote(username))
         response = ArboristResponse(requests.get(url))
         if response.code != 200:
             raise ArboristError(response.error_msg)
@@ -489,7 +489,7 @@ class ArboristClient(RBACClient):
         """
         MUST be user name, and not serial user ID
         """
-        url = self._user_url + "/{}/policy".format(username)
+        url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
         request = {"policy": policy_id}
         response = ArboristResponse(requests.post(url, json=request))
         if response.code != 204:
@@ -541,7 +541,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def grant_group_policy(self, group_name, policy_id):
-        url = self._group_url + "/{}/policy".format(group_name)
+        url = self._group_url + "/{}/policy".format(urllib.parse.quote(group_name))
         request = {"policy": policy_id}
         response = ArboristResponse(requests.post(url, json=request))
         if response.code != 204:
@@ -591,7 +591,7 @@ class ArboristClient(RBACClient):
     @_arborist_retry()
     def update_client(self, client_id, policies):
         # retrieve existing client, create one if not found
-        response = ArboristResponse(requests.get("/".join((self._client_url, client_id))))
+        response = ArboristResponse(requests.get("/".join((self._client_url, urllib.parse.quote(client_id)))))
         if response.code == 404:
             self.create_client(client_id, policies)
             return
@@ -608,7 +608,7 @@ class ArboristClient(RBACClient):
         policies = set(policies)
 
         # find newly granted policies, revoke all if needed
-        url = "/".join((self._client_url, client_id, "policy"))
+        url = "/".join((self._client_url, urllib.parse.quote(client_id), "policy"))
         if current_policies.difference(policies):
             # if some policies must be removed, revoke all and re-grant later
             response = ArboristResponse(requests.delete(url))
@@ -637,6 +637,6 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_client(self, client_id):
-        response = ArboristResponse(requests.delete("/".join((self._client_url, client_id))))
+        response = ArboristResponse(requests.delete("/".join((self._client_url, urllib.parse.quote(client_id)))))
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
