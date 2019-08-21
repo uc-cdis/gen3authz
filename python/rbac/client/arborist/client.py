@@ -238,7 +238,7 @@ class ArboristClient(RBACClient):
             )
             raise ArboristError(response.error_msg)
         self.logger.info("created resource {}".format(resource_json["name"]))
-        return response
+        return response.json
 
     @_arborist_retry()
     def get_resource(self, path):
@@ -256,9 +256,8 @@ class ArboristClient(RBACClient):
         if response.code == 404:
             return None
         if not response.successful:
-            msg = response.json["error"]["message"]
-            self.logger.error(msg)
-            raise ArboristError(message=msg, code=500)
+            self.logger.error(response.error_msg)
+            raise ArboristError(message=response.error_msg, code=500)
         return response
 
     @_arborist_retry()
@@ -275,7 +274,7 @@ class ArboristClient(RBACClient):
             self.logger.error(msg)
             raise ArboristError(msg)
         self.logger.info("updated resource {}".format(resource_json["name"]))
-        return response
+        return response.json
 
     @_arborist_retry()
     def delete_resource(self, path):
@@ -351,7 +350,7 @@ class ArboristClient(RBACClient):
             )
             raise ArboristError(response.json["error"])
         self.logger.info("created role {}".format(role_json["id"]))
-        return response
+        return response.json
 
     @_arborist_retry()
     def list_roles(self):
@@ -394,7 +393,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_policy(self, path):
-        return ArboristResponse(requests.delete(self._policy_url + urllib.parse.quote(path)))
+        return ArboristResponse(requests.delete(self._policy_url + urllib.parse.quote(path))).json
 
     @_arborist_retry()
     def create_policy(self, policy_json, skip_if_exists=True):
@@ -433,7 +432,8 @@ class ArboristClient(RBACClient):
             }
 
         """
-        return ArboristResponse(requests.get(self._policy_url))
+        return ArboristResponse(requests.get(self._policy_url)).json
+
 
     @_arborist_retry()
     def update_policy(self, policy_id, policy_json):
