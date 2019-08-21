@@ -168,7 +168,7 @@ class ArboristClient(RBACClient):
             raise ArboristError("{}: {}".format(msg, detail))
 
     @_arborist_retry()
-    def create_resource(self, parent_path, resource_json, overwrite=False, create_parents=False):
+    def create_resource(self, parent_path, resource_json, create_parents=False):
         """
         Create a new resource in arborist (does not affect fence database or
         otherwise have any interaction with userdatamodel).
@@ -226,11 +226,11 @@ class ArboristClient(RBACClient):
 
         response = ArboristResponse(requests.post(path, json=resource_json))
         if response.code == 409:
-            if overwrite:
-                resource_path = path + resource_json["name"]
-                return self.update_resource(resource_path, resource_json)
-            else:
-                return None
+            # already exists; this is ok, but leave warning
+            self.logger.warning(
+                "resource `{}` already exists in arborist".format(resource_json["name"])
+            )
+            return None
         if not response.successful:
             self.logger.error(
                 "could not create resource `{}` in arborist: {}"
