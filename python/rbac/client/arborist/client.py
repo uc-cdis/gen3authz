@@ -103,7 +103,6 @@ class ArboristClient(RBACClient):
     """
 
     def __init__(self, logger=None, arborist_base_url="http://arborist-service/"):
-        print("ArboristClient sanity check")
         self.logger = logger or get_logger("ArboristClient")
         self._base_url = arborist_base_url.strip("/")
         self._auth_url = self._base_url + "/auth/"
