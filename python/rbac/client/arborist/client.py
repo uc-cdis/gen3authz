@@ -438,18 +438,24 @@ class ArboristClient(RBACClient):
         return ArboristResponse(requests.get(self._policy_url)).json
 
 
+    def update_policy(self, policy_json):
+        # Appease abstract base class
+        put_policy(policy_json)
+
     @_arborist_retry()
-    def update_policy(self, policy_id, policy_json):
-        url = self._policy_url + urllib.parse.quote(policy_id)
-        response = ArboristResponse(requests.put(url, json=policy_json))
+    def put_policy(self, policy_json):
+        """
+        Arborist will create policy if not exist and overwrite if exist.
+        """
+        response = ArboristResponse(requests.put(self._policy_url, json=policy_json))
         if not response.successful:
             msg = (
-                "could not update policy `{}` in arborist: {}"
-                .format(policy_id, response.json["error"]["message"])
+                "could not put policy `{}` in arborist: {}"
+                .format(policy_json["id"], response.json["error"]["message"])
             )
             self.logger.error(msg)
             raise ArboristError(msg)
-        self.logger.info("updated policy {}".format(policy_json["name"]))
+        self.logger.info("put policy {}".format(policy_json["id"]))
         return response
 
 
@@ -519,17 +525,12 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def create_group(
-        self, name, description="", users=None, policies=None, overwrite=False
+        self, name, description="", users=[], policies=[]
     ):
-        users = users or []
-        policies = policies or []
         data = {"name": name, "users": users, "policies": policies}
         if description:
             data["description"] = description
-        if overwrite:
-            response = ArboristResponse(requests.put(self._group_url, json=data))
-        else:
-            response = ArboristResponse(requests.post(self._group_url, json=data))
+        response = ArboristResponse(requests.post(self._group_url, json=data))
         if response.code == 409:
             # already exists; this is ok, but leave warning
             self.logger.warn("group `{}` already exists in arborist".format(name))
@@ -540,6 +541,25 @@ class ArboristClient(RBACClient):
         if users:
             self.logger.info("group {} contains users: {}".format(name, list(users)))
             self.logger.info("group {} has policies: {}".format(name, list(policies)))
+        return response.json
+
+    @_arborist_retry()
+    def put_group(self, name, description="", users=[], policies=[]):
+        """
+        Arborist will create group if not exist and overwrite if exist.
+        """
+        data = {"name": name, "users": users, "policies": policies}
+        if description:
+            data["description"] = description
+        response = ArboristResponse(requests.put(self._group_url, json=data))
+        if not response.successful:
+            msg = (
+                "could not put group `{}` in arborist: {}"
+                .format(name, response.error_msg)
+            )
+            self.logger.error(msg)
+            raise ArboristError(msg)
+        self.logger.info("put group {}".format(name))
         return response.json
 
     @_arborist_retry()
