@@ -33,6 +33,9 @@ class ArboristResponse(object):
         self._response = response
         self.code = response.status_code
 
+        if not expect_json:
+            return
+
         try:
             self.json = response.json()
         except ValueError as e:
@@ -120,7 +123,7 @@ class ArboristClient(RBACClient):
             bool: whether arborist service is available
         """
         try:
-            response = ArboristResponse(requests.get(self._health_url))
+            response = ArboristResponse(requests.get(self._health_url), expect_json=False)
         except requests.RequestException as e:
             self.logger.error(
                 "arborist unavailable; got requests exception: {}".format(str(e))
@@ -491,7 +494,7 @@ class ArboristClient(RBACClient):
         """
         url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
         request = {"policy": policy_id}
-        response = ArboristResponse(requests.post(url, json=request))
+        response = ArboristResponse(requests.post(url, json=request), expect_json=False)
         if response.code != 204:
             self.logger.error(
                 "could not grant policy `{}` to user `{}`: {}".format(
@@ -500,19 +503,19 @@ class ArboristClient(RBACClient):
             )
             return None
         self.logger.info("granted policy `{}` to user `{}`".format(policy_id, username))
-        return response.json
+        return response.code
 
     @_arborist_retry()
     def revoke_all_policies_for_user(self, username):
         url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
-        response = ArboristResponse(requests.delete(url))
+        response = ArboristResponse(requests.delete(url), expect_json=False)
         if response.code != 204:
             self.logger.error(
                 "could not revoke policies from user `{}`: {}`".format(username, response.error_msg)
             )
             return None
         self.logger.info("revoked all policies from user `{}`".format(username))
-        return response.json
+        return True
 
     @_arborist_retry()
     def create_group(
@@ -543,7 +546,7 @@ class ArboristClient(RBACClient):
     def grant_group_policy(self, group_name, policy_id):
         url = self._group_url + "/{}/policy".format(urllib.parse.quote(group_name))
         request = {"policy": policy_id}
-        response = ArboristResponse(requests.post(url, json=request))
+        response = ArboristResponse(requests.post(url, json=request), expect_json=False)
         if response.code != 204:
             self.logger.error(
                 "could not grant policy `{}` to group `{}`: {}".format(
@@ -554,7 +557,7 @@ class ArboristClient(RBACClient):
         self.logger.info(
             "granted policy `{}` to group `{}`".format(policy_id, group_name)
         )
-        return response.json
+        return True
 
     @_arborist_retry()
     def create_user_if_not_exist(self, username):
@@ -625,7 +628,7 @@ class ArboristClient(RBACClient):
 
         # grant missing policies
         for policy in policies:
-            response = ArboristResponse(requests.post(url, json=dict(policy=policy)))
+            response = ArboristResponse(requests.post(url, json=dict(policy=policy)), expect_json=False)
             if response.code != 204:
                 self.logger.error(
                     "could not grant policy `{}` to client `{}` in arborist: {}".format(
@@ -637,6 +640,6 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_client(self, client_id):
-        response = ArboristResponse(requests.delete("/".join((self._client_url, urllib.parse.quote(client_id)))))
+        response = ArboristResponse(requests.delete("/".join((self._client_url, urllib.parse.quote(client_id)))), expect_json=False)
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
