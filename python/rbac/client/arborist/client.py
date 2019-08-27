@@ -446,7 +446,8 @@ class ArboristClient(RBACClient):
         """
         Arborist will create policy if not exist and overwrite if exist.
         """
-        response = ArboristResponse(requests.put(self._policy_url, json=policy_json))
+        url = self._policy_url + urllib.parse.quote(policy_json["id"])
+        response = ArboristResponse(requests.put(url, json=policy_json))
         if not response.successful:
             msg = (
                 "could not put policy `{}` in arborist: {}"
