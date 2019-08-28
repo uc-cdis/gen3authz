@@ -49,7 +49,10 @@ class ArboristResponse(object):
 
     @property
     def successful(self):
-        return "error" not in self.json
+        try:
+            return "error" not in self.json
+        except AttributeError:
+            return self.code < 400
 
     @property
     def error_msg(self):
