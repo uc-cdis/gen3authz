@@ -1,21 +1,22 @@
 """
 Define the ArboristClient class for interfacing with the arborist service for
-RBAC.
+authz.
 """
 
 from functools import wraps
+import urllib.parse
 
 import backoff
 from cdislogging import get_logger
 import requests
 
-from rbac import string_types
-from rbac.client.arborist.errors import (
+from gen3authz import string_types
+from gen3authz.client.arborist.errors import (
     ArboristError,
     ArboristUnhealthyError,
     AuthZError,
 )
-from rbac.client.base import RBACClient
+from gen3authz.client.base import AuthzClient
 
 
 def _escape_newlines(text):
@@ -31,6 +32,9 @@ class ArboristResponse(object):
     def __init__(self, response, expect_json=True):
         self._response = response
         self.code = response.status_code
+
+        if not expect_json:
+            return
 
         try:
             self.json = response.json()
@@ -93,9 +97,9 @@ def _arborist_retry(*backoff_args, **backoff_kwargs):
     return decorator
 
 
-class ArboristClient(RBACClient):
+class ArboristClient(AuthzClient):
     """
-    A singleton class for interfacing with the RBAC engine, "arborist".
+    A singleton class for interfacing with the authz engine, "arborist".
     """
 
     def __init__(self, logger=None, arborist_base_url="http://arborist-service/"):
@@ -106,6 +110,9 @@ class ArboristClient(RBACClient):
         self._policy_url = self._base_url + "/policy/"
         self._resource_url = self._base_url + "/resource"
         self._role_url = self._base_url + "/role/"
+        self._user_url = self._base_url + "/user"
+        self._client_url = self._base_url + "/client"
+        self._group_url = self._base_url + "/group"
 
     def healthy(self):
         """
@@ -115,20 +122,20 @@ class ArboristClient(RBACClient):
             bool: whether arborist service is available
         """
         try:
-            response = requests.get(self._health_url)
+            response = ArboristResponse(requests.get(self._health_url), expect_json=False)
         except requests.RequestException as e:
             self.logger.error(
                 "arborist unavailable; got requests exception: {}".format(str(e))
             )
             return False
-        if response.status_code != 200:
+        if response.code != 200:
             self.logger.error(
                 "arborist not healthy; {} returned code {}".format(
                     self._health_url,
-                    response.status_code,
+                    response.code,
                 )
             )
-        return response.status_code == 200
+        return response.code == 200
 
     @_arborist_retry()
     def auth_request(self, jwt, service, method, resources):
@@ -163,7 +170,7 @@ class ArboristClient(RBACClient):
             raise ArboristError("{}: {}".format(msg, detail))
 
     @_arborist_retry()
-    def create_resource(self, parent_path, resource_json, overwrite=False):
+    def create_resource(self, parent_path, resource_json, create_parents=False):
         """
         Create a new resource in arborist (does not affect fence database or
         otherwise have any interaction with userdatamodel).
@@ -195,6 +202,9 @@ class ArboristClient(RBACClient):
                 one; if this one is in the root level, then use "/"
             resource_json (dict):
                 dictionary of resource information (see the example above)
+            create_parents (bool):
+                if True, then arborist will create parent resources if they do
+                not exist yet.
 
         Return:
             dict: response JSON from arborist
@@ -211,14 +221,18 @@ class ArboristClient(RBACClient):
         #
         #     /resource/parent/new_resource
         #
-        path = self._resource_url + parent_path
+
+        path = self._resource_url + urllib.parse.quote(parent_path)
+        if create_parents:
+            path = path + "?p"
+
         response = ArboristResponse(requests.post(path, json=resource_json))
         if response.code == 409:
-            if overwrite:
-                resource_path = path + resource_json["name"]
-                return self.update_resource(resource_path, resource_json)
-            else:
-                return None
+            # already exists; this is ok, but leave warning
+            self.logger.warning(
+                "resource `{}` already exists in arborist".format(resource_json["name"])
+            )
+            return None
         if not response.successful:
             self.logger.error(
                 "could not create resource `{}` in arborist: {}"
@@ -226,7 +240,7 @@ class ArboristClient(RBACClient):
             )
             raise ArboristError(response.error_msg)
         self.logger.info("created resource {}".format(resource_json["name"]))
-        return response
+        return response.json
 
     @_arborist_retry()
     def get_resource(self, path):
@@ -239,19 +253,20 @@ class ArboristClient(RBACClient):
         Return:
             dict: JSON representation of the resource
         """
-        url = self._resource_url + path
+        url = self._resource_url + urllib.parse.quote(path)
         response = ArboristResponse(requests.get(url))
         if response.code == 404:
             return None
         if not response.successful:
-            msg = response.json["error"]["message"]
-            self.logger.error(msg)
-            raise ArboristError(message=msg, code=500)
+            self.logger.error(response.error_msg)
+            raise ArboristError(message=response.error_msg, code=500)
         return response
 
     @_arborist_retry()
-    def update_resource(self, path, resource_json):
-        url = self._resource_url + path
+    def update_resource(self, path, resource_json, create_parents=False):
+        url = self._resource_url + urllib.parse.quote(path)
+        if create_parents:
+            url = url + "?p"
         response = ArboristResponse(requests.put(url, json=resource_json))
         if not response.successful:
             msg = (
@@ -261,13 +276,13 @@ class ArboristClient(RBACClient):
             self.logger.error(msg)
             raise ArboristError(msg)
         self.logger.info("updated resource {}".format(resource_json["name"]))
-        return response
+        return response.json
 
     @_arborist_retry()
     def delete_resource(self, path):
-        url = self._resource_url + path
-        response = requests.delete(url)
-        if response.status_code not in [204, 404]:
+        url = self._resource_url + urllib.parse.quote(path)
+        response = ArboristResponse(requests.delete(url))
+        if response.code not in [204, 404]:
             raise ArboristError
         return True
 
@@ -327,6 +342,7 @@ class ArboristClient(RBACClient):
         """
         response = ArboristResponse(requests.post(self._role_url, json=role_json))
         if response.code == 409:
+            # already exists; this is ok
             return None
         if not response.successful:
             self.logger.error(
@@ -336,7 +352,7 @@ class ArboristClient(RBACClient):
             )
             raise ArboristError(response.json["error"])
         self.logger.info("created role {}".format(role_json["id"]))
-        return response
+        return response.json
 
     @_arborist_retry()
     def list_roles(self):
@@ -344,7 +360,7 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def update_role(self, role_id, role_json):
-        url = self._role_url + role_id
+        url = self._role_url + urllib.parse.quote(role_id)
         response = ArboristResponse(requests.put(url, json=role_json))
         if not response.successful:
             msg = (
@@ -358,8 +374,11 @@ class ArboristClient(RBACClient):
 
     @_arborist_retry()
     def delete_role(self, role_id):
-        response = ArboristResponse(requests.delete(self._role_url + role_id))
-        if response.code >= 400:
+        response = ArboristResponse(requests.delete(self._role_url + urllib.parse.quote(role_id)))
+        if response.code == 404:
+            # already doesn't exist, this is fine
+            return
+        elif response.code >= 400:
             raise ArboristError(
                 "could not delete role in arborist: {}".format(response.json()["error"])
             )
@@ -369,19 +388,23 @@ class ArboristClient(RBACClient):
         """
         Return the JSON representation of a policy with this ID.
         """
-        response = requests.get(self._policy_url + policy_id)
-        if response.status_code == 404:
+        response = ArboristResponse(requests.get(self._policy_url + urllib.parse.quote(policy_id)))
+        if response.code == 404:
             return None
-        return response.json()
+        return response.json
 
     @_arborist_retry()
     def delete_policy(self, path):
-        return ArboristResponse(requests.delete(self._policy_url + path))
+        return ArboristResponse(requests.delete(self._policy_url + urllib.parse.quote(path))).json
 
     @_arborist_retry()
     def create_policy(self, policy_json, skip_if_exists=True):
         response = ArboristResponse(requests.post(self._policy_url, json=policy_json))
         if response.code == 409:
+            # already exists; this is ok, but leave warning
+            self.logger.warning(
+                "policy `{}` already exists in arborist".format(policy_json["id"])
+            )
             return None
         if not response.successful:
             self.logger.error(
@@ -411,18 +434,232 @@ class ArboristClient(RBACClient):
             }
 
         """
-        return ArboristResponse(requests.get(self._policy_url))
+        return ArboristResponse(requests.get(self._policy_url)).json
+
+
+    def update_policy(self, policy_json):
+        # Appease abstract base class
+        put_policy(policy_json)
 
     @_arborist_retry()
-    def update_policy(self, policy_id, policy_json):
-        url = self._policy_url + policy_id
+    def put_policy(self, policy_json):
+        """
+        Arborist will create policy if not exist and overwrite if exist.
+        """
+        url = self._policy_url + urllib.parse.quote(policy_json["id"])
         response = ArboristResponse(requests.put(url, json=policy_json))
         if not response.successful:
             msg = (
-                "could not update policy `{}` in arborist: {}"
-                .format(policy_id, response.json["error"]["message"])
+                "could not put policy `{}` in arborist: {}"
+                .format(policy_json["id"], response.json["error"]["message"])
             )
             self.logger.error(msg)
             raise ArboristError(msg)
-        self.logger.info("updated policy {}".format(policy_json["name"]))
+        self.logger.info("put policy {}".format(policy_json["id"]))
         return response
+
+
+    @_arborist_retry()
+    def create_user(self, user_info):
+        """
+        Args:
+            user_info (dict):
+                user information that goes in the request to arborist; see arborist docs
+                for required field names. notably it's `name` not `username`
+        """
+        if "name" not in user_info:
+            raise ValueError("create_user requires username `name` in user info")
+        response = ArboristResponse(requests.post(self._user_url, json=user_info))
+        if response.code == 409:
+            # already exists
+            return
+        elif response.code != 201:
+            self.logger.error(response.error_msg)
+
+
+    @_arborist_retry()
+    def list_resources_for_user(self, username):
+        """
+        Args:
+            username (str)
+
+        Return:
+            List[str]: list of resource paths which the user has any access to
+        """
+        url = "{}/{}/resources".format(self._user_url, urllib.parse.quote(username))
+        response = ArboristResponse(requests.get(url))
+        if response.code != 200:
+            raise ArboristError(response.error_msg)
+        return response.json["resources"]
+
+
+    @_arborist_retry()
+    def grant_user_policy(self, username, policy_id):
+        """
+        MUST be user name, and not serial user ID
+        """
+        url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
+        request = {"policy": policy_id}
+        response = ArboristResponse(requests.post(url, json=request), expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not grant policy `{}` to user `{}`: {}".format(
+                    policy_id, username, response.error_msg
+                )
+            )
+            return None
+        self.logger.info("granted policy `{}` to user `{}`".format(policy_id, username))
+        return response.code
+
+    @_arborist_retry()
+    def revoke_all_policies_for_user(self, username):
+        url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
+        response = ArboristResponse(requests.delete(url), expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not revoke policies from user `{}`: {}`".format(username, response.error_msg)
+            )
+            return None
+        self.logger.info("revoked all policies from user `{}`".format(username))
+        return True
+
+    @_arborist_retry()
+    def create_group(
+        self, name, description="", users=[], policies=[]
+    ):
+        data = {"name": name, "users": users, "policies": policies}
+        if description:
+            data["description"] = description
+        response = ArboristResponse(requests.post(self._group_url, json=data))
+        if response.code == 409:
+            # already exists; this is ok, but leave warning
+            self.logger.warn("group `{}` already exists in arborist".format(name))
+        if response.code != 201:
+            self.logger.error("could not create group {}: {}".format(name, response.error_msg))
+            return None
+        self.logger.info("created new group `{}`".format(name))
+        if users:
+            self.logger.info("group {} contains users: {}".format(name, list(users)))
+            self.logger.info("group {} has policies: {}".format(name, list(policies)))
+        return response.json
+
+    @_arborist_retry()
+    def put_group(self, name, description="", users=[], policies=[]):
+        """
+        Arborist will create group if not exist and overwrite if exist.
+        """
+        data = {"name": name, "users": users, "policies": policies}
+        if description:
+            data["description"] = description
+        response = ArboristResponse(requests.put(self._group_url, json=data))
+        if not response.successful:
+            msg = (
+                "could not put group `{}` in arborist: {}"
+                .format(name, response.error_msg)
+            )
+            self.logger.error(msg)
+            raise ArboristError(msg)
+        self.logger.info("put group {}".format(name))
+        return response.json
+
+    @_arborist_retry()
+    def grant_group_policy(self, group_name, policy_id):
+        url = self._group_url + "/{}/policy".format(urllib.parse.quote(group_name))
+        request = {"policy": policy_id}
+        response = ArboristResponse(requests.post(url, json=request), expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not grant policy `{}` to group `{}`: {}".format(
+                    policy_id, group_name, response.error_msg
+                )
+            )
+            return None
+        self.logger.info(
+            "granted policy `{}` to group `{}`".format(policy_id, group_name)
+        )
+        return True
+
+    @_arborist_retry()
+    def create_user_if_not_exist(self, username):
+        self.logger.info("making sure user exists: `{}`".format(username))
+        user_json = {"name": username}
+        response = ArboristResponse(requests.post(self._user_url, json=user_json))
+        if response.code == 409:
+            return None
+        if "error" in response.json:
+            self.logger.error(
+                "could not create user `{}` in arborist: {}".format(
+                    username, response.json["error"]
+                )
+            )
+            raise ArboristError(response.json["error"])
+        self.logger.info("created user {}".format(username))
+        return response.json
+
+    @_arborist_retry()
+    def create_client(self, client_id, policies):
+        response = ArboristResponse(requests.post(
+            self._client_url, json=dict(clientID=client_id, policies=policies or [])
+        ))
+        if "error" in response.json:
+            self.logger.error(
+                "could not create client `{}` in arborist: {}".format(
+                    client_id, response.json["error"]
+                )
+            )
+            raise ArboristError(response.json["error"])
+        self.logger.info("created client {}".format(client_id))
+        return response.json
+
+    @_arborist_retry()
+    def update_client(self, client_id, policies):
+        # retrieve existing client, create one if not found
+        response = ArboristResponse(requests.get("/".join((self._client_url, urllib.parse.quote(client_id)))))
+        if response.code == 404:
+            self.create_client(client_id, policies)
+            return
+
+        # unpack the result
+        if "error" in response.json:
+            self.logger.error(
+                "could not fetch client `{}` in arborist: {}".format(
+                    client_id, response.json["error"]
+                )
+            )
+            raise ArboristError(response.json["error"])
+        current_policies = set(response.json["policies"])
+        policies = set(policies)
+
+        # find newly granted policies, revoke all if needed
+        url = "/".join((self._client_url, urllib.parse.quote(client_id), "policy"))
+        if current_policies.difference(policies):
+            # if some policies must be removed, revoke all and re-grant later
+            response = ArboristResponse(requests.delete(url))
+            if response.code != 204:
+                self.logger.error(
+                    "could not revoke policies from client `{}` in arborist: {}".format(
+                        client_id, response.json.get("error")
+                    )
+                )
+                raise ArboristError(response.json.get("error"))
+        else:
+            # do not add policies that already exist
+            policies.difference_update(current_policies)
+
+        # grant missing policies
+        for policy in policies:
+            response = ArboristResponse(requests.post(url, json=dict(policy=policy)), expect_json=False)
+            if response.code != 204:
+                self.logger.error(
+                    "could not grant policy `{}` to client `{}` in arborist: {}".format(
+                        policy, client_id, response.json["error"]
+                    )
+                )
+                raise ArboristError(response.json["error"])
+        self.logger.info("updated policies for client {}".format(client_id))
+
+    @_arborist_retry()
+    def delete_client(self, client_id):
+        response = ArboristResponse(requests.delete("/".join((self._client_url, urllib.parse.quote(client_id)))), expect_json=False)
+        self.logger.info("deleted client {}".format(client_id))
+        return response.code == 204
