@@ -1,6 +1,6 @@
 """
 Define the ArboristClient class for interfacing with the arborist service for
-RBAC.
+authz.
 """
 
 from functools import wraps
@@ -10,13 +10,13 @@ import backoff
 from cdislogging import get_logger
 import requests
 
-from rbac import string_types
-from rbac.client.arborist.errors import (
+from gen3authz import string_types
+from gen3authz.client.arborist.errors import (
     ArboristError,
     ArboristUnhealthyError,
     AuthZError,
 )
-from rbac.client.base import RBACClient
+from gen3authz.client.base import AuthzClient
 
 
 def _escape_newlines(text):
@@ -97,9 +97,9 @@ def _arborist_retry(*backoff_args, **backoff_kwargs):
     return decorator
 
 
-class ArboristClient(RBACClient):
+class ArboristClient(AuthzClient):
     """
-    A singleton class for interfacing with the RBAC engine, "arborist".
+    A singleton class for interfacing with the authz engine, "arborist".
     """
 
     def __init__(self, logger=None, arborist_base_url="http://arborist-service/"):

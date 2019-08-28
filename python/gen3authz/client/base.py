@@ -2,14 +2,14 @@ import abc
 import six
 
 
-class RBACClient(six.with_metaclass(abc.ABCMeta)):
+class AuthzClient(six.with_metaclass(abc.ABCMeta)):
     """
-    Abstract class to define behavior of an RBAC client implementation.
+    Abstract class to define behavior of an authz client implementation.
     """
 
     @abc.abstractmethod
     def healthy(self):
-        """Indicate whether the RBAC service is available."""
+        """Indicate whether the authz service is available."""
 
     @abc.abstractmethod
     def auth_request(self, jwt, service, method, resource):

@@ -25,10 +25,10 @@ def get_version():
 
 
 setup(
-    name="gen3rbac",
+    name="gen3authz",
     version=get_version(),
-    description="Gen3 RBAC Client",
-    url="https://github.com/uc-cdis/rbac-client",
+    description="Gen3 authz client",
+    url="https://github.com/uc-cdis/gen3authz",
     license="Apache",
     packages=find_packages(),
     install_requires=["cdiserrors~=0.1", "backoff~=1.6", "requests~=2.18"],

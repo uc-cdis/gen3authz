@@ -9,7 +9,7 @@ import time
 import pytest
 import requests
 
-from rbac.client.arborist.client import ArboristClient
+from gen3authz.client.arborist.client import ArboristClient
 
 
 @pytest.fixture(scope="session")
@@ -64,7 +64,7 @@ def mock_arborist_request(request, arborist_base_url):
         for method in ["GET", "POST", "PATCH", "PUT", "DELETE"]:
             mocked_method = mock.MagicMock(side_effect=mocker(method))
             import_name = (
-                "rbac.client.arborist.client.requests.{}"
+                "gen3authz.client.arborist.client.requests.{}"
                 .format(method.lower())
             )
             patch_method = mock.patch(import_name, mocked_method)
