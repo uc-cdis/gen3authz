@@ -138,19 +138,21 @@ class ArboristClient(AuthzClient):
         return response.code == 200
 
     @_arborist_retry()
-    def auth_request(self, jwt, service, method, resources):
+    def auth_request(self, jwt, service, methods, resources):
         """
         Return:
             bool: authorization response
         """
         if isinstance(resources, string_types):
             resources = [resources]
+        if isinstance(methods, string_types):
+            methods = [methods]
         data = {
             "user": {"token": jwt},
             "requests": [{
                 "resource": resource,
                 "action": {"service": service, "method": method},
-            } for resource in resources],
+            } for resource in resources for method in methods],
         }
         response = ArboristResponse(
             requests.post(self._auth_url.rstrip("/") + "/request", json=data)
