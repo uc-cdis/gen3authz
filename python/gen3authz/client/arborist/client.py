@@ -60,7 +60,7 @@ class ArboristResponse(object):
             return None
         try:
             return self.json["error"]["message"]
-        except KeyError:
+        except (KeyError, AttributeError):
             return self._response.text
 
 
