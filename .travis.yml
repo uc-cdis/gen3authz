@@ -9,7 +9,7 @@ cache:
 install:
 - cd python
 - pip install pipenv
-- pipenv install --dev --skip-lock
+- pipenv install --dev --skip-lock --python `which python`
 - pipenv graph
 script:
 - pipenv run py.test -vv --cov=rbac --cov-report xml tests
