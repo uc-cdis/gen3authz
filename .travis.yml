@@ -9,7 +9,7 @@ cache:
 install:
 - cd python
 - pip install pipenv
-- pipenv install --dev --deploy
+- pipenv install --dev --skip-lock --python `which python`
 - pipenv graph
 script:
 - pipenv run py.test -vv --cov=rbac --cov-report xml tests
@@ -26,13 +26,15 @@ deploy:
   skip_existing: true
   skip_cleanup: true
   on:
-    python: 3.7
-    repo: uc-cdis/rbac-client
+    #python: 3.7
+    repo: uc-cdis/gen3authz
     tags: true
   password:
     secure: eZ1s62cKDK9swavDx38G55z8aBsEyOC+kCpcE4eyYpEKH4ohyDgHawQQq9DyLTtWyHC9GZklhPLnn+MuhlEMOxTHbdkWuJ4Y7MK84S5EBHj0uMpxDvidEq2LqVu8zMxGJon1HITGEuAfm/DyR7kNnR9l82Nd0ofgdTekhuFeZczhUc1pNmqM8Sa/FyzwD9yr1v30Mx3gmN82vlNtXECCZwvjBrDzGGvYhUVhCjp2oJaK15aw4/qiPziZXMr4tjtD4T/vHrkvRXT1jtkgalIP0zKz/RbnHLd8bAhz7vjtuoHDH7mOMaHKsd/+ii66uNOKONXdNYaM8wCS9SYrzsPvEsywE22G2TCm86ChZWGZu0WdygOISeUzM+3BUOfXCoxdT17FxTF2y+0dcFjCJwwhcmvlIuUaP/V/RD+AIZiHs4iXoqM4SEB4Z9t28sPB5BgAn6MxMR3R8SVFK8ewcTVNI8VZt+9v0UqkvIi0YN1Wp0fZ6EhmDLsz8D/32PggODJJzShLSYOPzoDXKpei1fWRorcYV+bAu7AoA2YCqmGDjpBUkKXLSnPVpm3wANu+zlYpJgLnCvRo8NmWFvUdn7I3c5fuac7RL3xg+yyxgB7Ty1tsh8tFOLoL4tuu5VvJncDQgtC54PumOTPzx8+0GNxSFXFv889NgUZ6w1dYZOwCnCY=
 after_deploy:
-- gen3git release
+- pipenv run pip install gen3git
+- pipenv run gen3git release
 env:
   global:
-    secure: YpbDAuLAkH+O+PRiLTd/DioGDWssLmNIOhhk4bWyhvX3B8sSB6wkiWEQg2SHAqFR08f8/oI/i8H47sajo4CZokrpQlmH80iV58kprn2tfH2zyIpdNot0EexZ0uZDvuGvY6Vzxd81YoWZxF4Ugl37npNrM+EzgkTxqd/63pcUYfPXgwdIxtf4gvBUR5WcrF+j+sWLnRCKk/6iB5Q/lmDLXWMTmPYahgAdPChrbSVD9G6vRnI7aQtkYstsVhmSRz3G6UqCzgFOYcPic3PpeUvULJCDgClabFtbgauzANZQBnPdV3vS2b49QwMf1Z2UfLVUrRNmypmpM4iukaBXkvQ/7hHJyiQvtfXsIvT6udFBMT3U/4CDKmYNIlDiBcP3UFird6wFo135FYEhyDHZTNJwsx4IlLosUG5Ep3gHZJ7IJwbCmMaIBt8W2gRHFN4worNmCxKBX5Ew5S3e/nilcUyYNaEFBSEp6mzaIOKuMC5yQuSuzsa4oCmkPRBZkvOnnhvU0SdNjvRTbmX64koxb3awL7M1YeAlp6osxrFppNxoXcjLuPdLVGLQGnETtxi5GZkmfrnIU/BoM2D/MMIvwRXn5OUofV2OgCrQPUUvsZf/zQk7QKJ53z4p4CpuAgZ8Qk3bw5DI4rJU655tkR88dvZgCrtJ5KkhteeyzNdWGM6OBng=
+  - PIPENV_IGNORE_VIRTUALENVS=1
+  - secure: YpbDAuLAkH+O+PRiLTd/DioGDWssLmNIOhhk4bWyhvX3B8sSB6wkiWEQg2SHAqFR08f8/oI/i8H47sajo4CZokrpQlmH80iV58kprn2tfH2zyIpdNot0EexZ0uZDvuGvY6Vzxd81YoWZxF4Ugl37npNrM+EzgkTxqd/63pcUYfPXgwdIxtf4gvBUR5WcrF+j+sWLnRCKk/6iB5Q/lmDLXWMTmPYahgAdPChrbSVD9G6vRnI7aQtkYstsVhmSRz3G6UqCzgFOYcPic3PpeUvULJCDgClabFtbgauzANZQBnPdV3vS2b49QwMf1Z2UfLVUrRNmypmpM4iukaBXkvQ/7hHJyiQvtfXsIvT6udFBMT3U/4CDKmYNIlDiBcP3UFird6wFo135FYEhyDHZTNJwsx4IlLosUG5Ep3gHZJ7IJwbCmMaIBt8W2gRHFN4worNmCxKBX5Ew5S3e/nilcUyYNaEFBSEp6mzaIOKuMC5yQuSuzsa4oCmkPRBZkvOnnhvU0SdNjvRTbmX64koxb3awL7M1YeAlp6osxrFppNxoXcjLuPdLVGLQGnETtxi5GZkmfrnIU/BoM2D/MMIvwRXn5OUofV2OgCrQPUUvsZf/zQk7QKJ53z4p4CpuAgZ8Qk3bw5DI4rJU655tkR88dvZgCrtJ5KkhteeyzNdWGM6OBng=
