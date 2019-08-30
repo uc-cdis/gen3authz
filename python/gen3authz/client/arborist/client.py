@@ -152,8 +152,16 @@ class ArboristClient(AuthzClient):
         Return:
             bool: authorization response
         """
+        # try to default
         if not jwt:
-            jwt = flask.request.headers["Authorization"].split("Bearer ")[1]
+            auth_header = flask.request.headers.get("Authorization")
+            if auth_header:
+                items = auth_header.split(" ")
+                if len(items) == 2 and items[0].lower() == "bearer":
+                    jwt = items[1]
+        # ok, now we complain
+        if not jwt:
+            raise ArboristError("couldn't get JWT from authorization header")
         if isinstance(resources, string_types):
             resources = [resources]
         if isinstance(methods, string_types):
