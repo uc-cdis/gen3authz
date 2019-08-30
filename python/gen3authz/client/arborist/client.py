@@ -4,7 +4,11 @@ authz.
 """
 
 from functools import wraps
-import urllib.parse
+
+try:
+    import urllib.parse as urllib
+except ImportError:
+    import urllib
 
 import backoff
 from cdislogging import get_logger
@@ -227,7 +231,7 @@ class ArboristClient(AuthzClient):
         #     /resource/parent/new_resource
         #
 
-        path = self._resource_url + urllib.parse.quote(parent_path)
+        path = self._resource_url + urllib.quote(parent_path)
         if create_parents:
             path = path + "?p"
 
@@ -258,7 +262,7 @@ class ArboristClient(AuthzClient):
         Return:
             dict: JSON representation of the resource
         """
-        url = self._resource_url + urllib.parse.quote(path)
+        url = self._resource_url + urllib.quote(path)
         response = ArboristResponse(requests.get(url))
         if response.code == 404:
             return None
@@ -269,7 +273,7 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def update_resource(self, path, resource_json, create_parents=False):
-        url = self._resource_url + urllib.parse.quote(path)
+        url = self._resource_url + urllib.quote(path)
         if create_parents:
             url = url + "?p"
         response = ArboristResponse(requests.put(url, json=resource_json))
@@ -285,7 +289,7 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def delete_resource(self, path):
-        url = self._resource_url + urllib.parse.quote(path)
+        url = self._resource_url + urllib.quote(path)
         response = ArboristResponse(requests.delete(url))
         if response.code not in [204, 404]:
             raise ArboristError
@@ -365,7 +369,7 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def update_role(self, role_id, role_json):
-        url = self._role_url + urllib.parse.quote(role_id)
+        url = self._role_url + urllib.quote(role_id)
         response = ArboristResponse(requests.put(url, json=role_json))
         if not response.successful:
             msg = (
@@ -379,7 +383,7 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def delete_role(self, role_id):
-        response = ArboristResponse(requests.delete(self._role_url + urllib.parse.quote(role_id)))
+        response = ArboristResponse(requests.delete(self._role_url + urllib.quote(role_id)))
         if response.code == 404:
             # already doesn't exist, this is fine
             return
@@ -393,14 +397,14 @@ class ArboristClient(AuthzClient):
         """
         Return the JSON representation of a policy with this ID.
         """
-        response = ArboristResponse(requests.get(self._policy_url + urllib.parse.quote(policy_id)))
+        response = ArboristResponse(requests.get(self._policy_url + urllib.quote(policy_id)))
         if response.code == 404:
             return None
         return response.json
 
     @_arborist_retry()
     def delete_policy(self, path):
-        return ArboristResponse(requests.delete(self._policy_url + urllib.parse.quote(path))).json
+        return ArboristResponse(requests.delete(self._policy_url + urllib.quote(path))).json
 
     @_arborist_retry()
     def create_policy(self, policy_json, skip_if_exists=True):
@@ -451,7 +455,7 @@ class ArboristClient(AuthzClient):
         """
         Arborist will create policy if not exist and overwrite if exist.
         """
-        url = self._policy_url + urllib.parse.quote(policy_json["id"])
+        url = self._policy_url + urllib.quote(policy_json["id"])
         response = ArboristResponse(requests.put(url, json=policy_json))
         if not response.successful:
             msg = (
@@ -491,7 +495,7 @@ class ArboristClient(AuthzClient):
         Return:
             List[str]: list of resource paths which the user has any access to
         """
-        url = "{}/{}/resources".format(self._user_url, urllib.parse.quote(username))
+        url = "{}/{}/resources".format(self._user_url, urllib.quote(username))
         response = ArboristResponse(requests.get(url))
         if response.code != 200:
             raise ArboristError(response.error_msg)
@@ -503,7 +507,7 @@ class ArboristClient(AuthzClient):
         """
         MUST be user name, and not serial user ID
         """
-        url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
+        url = self._user_url + "/{}/policy".format(urllib.quote(username))
         request = {"policy": policy_id}
         response = ArboristResponse(requests.post(url, json=request), expect_json=False)
         if response.code != 204:
@@ -518,7 +522,7 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def revoke_all_policies_for_user(self, username):
-        url = self._user_url + "/{}/policy".format(urllib.parse.quote(username))
+        url = self._user_url + "/{}/policy".format(urllib.quote(username))
         response = ArboristResponse(requests.delete(url), expect_json=False)
         if response.code != 204:
             self.logger.error(
@@ -569,7 +573,7 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def grant_group_policy(self, group_name, policy_id):
-        url = self._group_url + "/{}/policy".format(urllib.parse.quote(group_name))
+        url = self._group_url + "/{}/policy".format(urllib.quote(group_name))
         request = {"policy": policy_id}
         response = ArboristResponse(requests.post(url, json=request), expect_json=False)
         if response.code != 204:
@@ -619,7 +623,7 @@ class ArboristClient(AuthzClient):
     @_arborist_retry()
     def update_client(self, client_id, policies):
         # retrieve existing client, create one if not found
-        response = ArboristResponse(requests.get("/".join((self._client_url, urllib.parse.quote(client_id)))))
+        response = ArboristResponse(requests.get("/".join((self._client_url, urllib.quote(client_id)))))
         if response.code == 404:
             self.create_client(client_id, policies)
             return
@@ -636,7 +640,7 @@ class ArboristClient(AuthzClient):
         policies = set(policies)
 
         # find newly granted policies, revoke all if needed
-        url = "/".join((self._client_url, urllib.parse.quote(client_id), "policy"))
+        url = "/".join((self._client_url, urllib.quote(client_id), "policy"))
         if current_policies.difference(policies):
             # if some policies must be removed, revoke all and re-grant later
             response = ArboristResponse(requests.delete(url))
@@ -665,6 +669,6 @@ class ArboristClient(AuthzClient):
 
     @_arborist_retry()
     def delete_client(self, client_id):
-        response = ArboristResponse(requests.delete("/".join((self._client_url, urllib.parse.quote(client_id)))), expect_json=False)
+        response = ArboristResponse(requests.delete("/".join((self._client_url, urllib.quote(client_id)))), expect_json=False)
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
