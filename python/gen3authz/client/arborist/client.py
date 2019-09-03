@@ -603,6 +603,25 @@ class ArboristClient(AuthzClient):
         return response.json
 
     @_arborist_retry()
+    def add_user_to_group(self, username, group_name, expires_at=None):
+        url = self._group_url + "/{}/user".format(urllib.quote(group_name))
+        request = dict(username=username)
+        if expires_at:
+            if hasattr(expires_at, "isoformat"):
+                expires_at = expires_at.isoformat()
+            request["expires_at"] = expires_at
+        response = ArboristResponse(requests.post(url, json=request), expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not add user `{}` to group `{}`: {}".format(
+                    username, group_name, response.error_msg
+                )
+            )
+            return None
+        self.logger.info("added user `{}` to group `{}`".format(username, group_name))
+        return True
+
+    @_arborist_retry()
     def grant_group_policy(self, group_name, policy_id):
         url = self._group_url + "/{}/policy".format(urllib.quote(group_name))
         request = {"policy": policy_id}
