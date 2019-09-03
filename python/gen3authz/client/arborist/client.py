@@ -147,6 +147,25 @@ class ArboristClient(AuthzClient):
         return response.code == 200
 
     @_arborist_retry()
+    def auth_mapping(self, username):
+        """
+        For given user, get mapping from the resources that this user can access
+        to the actions on those resources for which they are authorized.
+
+        Return:
+            dict: response JSON from arborist
+        """
+        data = {
+            "username": username,
+        }
+        response = ArboristResponse(
+            requests.post(self._auth_url.rstrip("/") + "/mapping", json=data)
+        )
+        if not response.successful:
+            raise ArboristError(message=response.error_msg)
+        return response.json
+
+    @_arborist_retry()
     def auth_request(self, service, methods, resources, jwt=None):
         """
         Return:
