@@ -3,8 +3,6 @@ Define the ArboristClient class for interfacing with the arborist service for
 authz.
 """
 
-import flask
-
 from functools import wraps
 
 try:
@@ -166,21 +164,11 @@ class ArboristClient(AuthzClient):
         return response.json
 
     @_arborist_retry()
-    def auth_request(self, service, methods, resources, jwt=None):
+    def auth_request(self, jwt, service, methods, resources):
         """
         Return:
             bool: authorization response
         """
-        # try to default
-        if not jwt:
-            auth_header = flask.request.headers.get("Authorization")
-            if auth_header:
-                items = auth_header.split(" ")
-                if len(items) == 2 and items[0].lower() == "bearer":
-                    jwt = items[1]
-        # ok, now we complain
-        if not jwt:
-            raise ArboristError("couldn't get JWT from authorization header")
         if isinstance(resources, string_types):
             resources = [resources]
         if isinstance(methods, string_types):
