@@ -177,8 +177,8 @@ class ArboristClient(AuthzClient):
             requests.post(self._auth_url.rstrip("/") + "/request", json=data)
         )
         if not response.successful:
-            msg = "request to arborist failed: {}".format(response.json())
-            raise ArboristError(message=msg, code=500)
+            msg = "request to arborist failed: {}".format(response.json)
+            raise ArboristError(message=msg)
         elif response.code == 200:
             return bool(response.json["auth"])
         else:
@@ -280,7 +280,7 @@ class ArboristClient(AuthzClient):
             return None
         if not response.successful:
             self.logger.error(response.error_msg)
-            raise ArboristError(message=response.error_msg, code=500)
+            raise ArboristError(message=response.error_msg)
         return response
 
     @_arborist_retry()
@@ -401,7 +401,7 @@ class ArboristClient(AuthzClient):
             return
         elif response.code >= 400:
             raise ArboristError(
-                "could not delete role in arborist: {}".format(response.json()["error"])
+                "could not delete role in arborist: {}".format(response.json["error"])
             )
 
     @_arborist_retry()
