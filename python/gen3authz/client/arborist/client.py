@@ -179,7 +179,7 @@ class ArboristClient(AuthzClient):
         )
         if not response.successful:
             msg = "request to arborist failed: {}".format(response.json)
-            raise ArboristError(message=msg, response.code)
+            raise ArboristError(msg, response.code)
         elif response.code == 200:
             return bool(response.json["auth"])
         else:
@@ -281,7 +281,7 @@ class ArboristClient(AuthzClient):
             return None
         if not response.successful:
             self.logger.error(response.error_msg)
-            raise ArboristError(message=response.error_msg, response.code)
+            raise ArboristError(response.error_msg, response.code)
         return response
 
     @_arborist_retry()
