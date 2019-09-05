@@ -3,8 +3,12 @@ Run some basic tests that the methods on ``ArboristClient`` actually try to hit
 the correct URLs on the arborist API.
 """
 
-from unittest import mock
-
+try:
+    # python3
+    from unittest import mock
+except ImportError:
+    # python2
+    import mock
 
 def test_healthy_call(arborist_client):
     with mock.patch("gen3authz.client.arborist.client.requests.get") as mock_get:
