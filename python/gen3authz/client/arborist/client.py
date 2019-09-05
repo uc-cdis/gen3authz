@@ -47,7 +47,8 @@ class ArboristResponse(object):
                 raise ArboristError(
                     "got a confusing response from arborist, couldn't parse JSON from"
                     " response but got code {} for this response: {}"
-                    .format(self.code, _escape_newlines(response.text))
+                    .format(self.code, _escape_newlines(response.text)),
+                    self.code
                 )
             self.json = {"error": {"message": str(e), "code": 500}}
 
@@ -160,7 +161,7 @@ class ArboristClient(AuthzClient):
             requests.post(self._auth_url.rstrip("/") + "/mapping", json=data)
         )
         if not response.successful:
-            raise ArboristError(message=response.error_msg)
+            raise ArboristError(response.error_msg)
         return response.json
 
     @_arborist_retry()
@@ -184,18 +185,17 @@ class ArboristClient(AuthzClient):
             requests.post(self._auth_url.rstrip("/") + "/request", json=data)
         )
         if not response.successful:
-            msg = "request to arborist failed: {}".format(response.json())
-            raise ArboristError(message=msg, code=500)
+            msg = "request to arborist failed: {}".format(response.error_msg)
+            raise ArboristError(msg, response.code)
         elif response.code == 200:
             return bool(response.json["auth"])
         else:
             # arborist could send back a 400 for things like, the user has some policy
             # that it doesn't recognize, or the request is structured incorrectly; for
             # these cases we will default to unauthorized
-            msg = "arborist could not process auth request"
-            detail = response.json["error"]
-            self.logger.info("{}: {}".format(msg, detail))
-            raise ArboristError("{}: {}".format(msg, detail))
+            msg = "arborist could not process auth request: {}".format(response.error_msg)
+            self.logger.info(msg)
+            raise ArboristError(msg, response.code)
 
     @_arborist_retry()
     def create_resource(self, parent_path, resource_json, create_parents=False):
@@ -262,11 +262,9 @@ class ArboristClient(AuthzClient):
             )
             return None
         if not response.successful:
-            self.logger.error(
-                "could not create resource `{}` in arborist: {}"
-                .format(path, response.error_msg)
-            )
-            raise ArboristError(response.error_msg)
+            msg = "could not create resource `{}` in arborist: {}".format(path, response.error_msg)
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("created resource {}".format(resource_json["name"]))
         return response.json
 
@@ -287,7 +285,7 @@ class ArboristClient(AuthzClient):
             return None
         if not response.successful:
             self.logger.error(response.error_msg)
-            raise ArboristError(message=response.error_msg, code=500)
+            raise ArboristError(response.error_msg, response.code)
         return response
 
     @_arborist_retry()
@@ -299,10 +297,10 @@ class ArboristClient(AuthzClient):
         if not response.successful:
             msg = (
                 "could not update resource `{}` in arborist: {}"
-                .format(path, response.json["error"]["message"])
+                .format(path, response.error_msg)
             )
             self.logger.error(msg)
-            raise ArboristError(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("updated resource {}".format(resource_json["name"]))
         return response.json
 
@@ -373,12 +371,11 @@ class ArboristClient(AuthzClient):
             # already exists; this is ok
             return None
         if not response.successful:
-            self.logger.error(
-                "could not create role `{}` in arborist: {}".format(
-                    role_json["id"], response.error_msg
-                )
+            msg = "could not create role `{}` in arborist: {}".format(
+                role_json["id"], response.error_msg
             )
-            raise ArboristError(response.json["error"])
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("created role {}".format(role_json["id"]))
         return response.json
 
@@ -393,10 +390,10 @@ class ArboristClient(AuthzClient):
         if not response.successful:
             msg = (
                 "could not update role `{}` in arborist: {}"
-                .format(role_id, response.json["error"]["message"])
+                .format(role_id, response.error_msg)
             )
             self.logger.error(msg)
-            raise ArboristError(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("updated role {}".format(role_json["name"]))
         return response
 
@@ -407,9 +404,9 @@ class ArboristClient(AuthzClient):
             # already doesn't exist, this is fine
             return
         elif response.code >= 400:
-            raise ArboristError(
-                "could not delete role in arborist: {}".format(response.json()["error"])
-            )
+            msg = "could not delete role in arborist: {}".format(response.error_msg)
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
 
     @_arborist_retry()
     def get_policy(self, policy_id):
@@ -435,12 +432,11 @@ class ArboristClient(AuthzClient):
             )
             return None
         if not response.successful:
-            self.logger.error(
-                "could not create policy `{}` in arborist: {}".format(
-                    policy_json["id"], response.json["error"]["message"]
-                )
+            msg = "could not create policy `{}` in arborist: {}".format(
+                policy_json["id"], response.error_msg
             )
-            raise ArboristError(response.json["error"]["message"])
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("created policy {}".format(policy_json["id"]))
         return response
 
@@ -479,10 +475,10 @@ class ArboristClient(AuthzClient):
         if not response.successful:
             msg = (
                 "could not put policy `{}` in arborist: {}"
-                .format(policy_json["id"], response.json["error"]["message"])
+                .format(policy_json["id"], response.error_msg)
             )
             self.logger.error(msg)
-            raise ArboristError(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("put policy {}".format(policy_json["id"]))
         return response
 
@@ -517,7 +513,7 @@ class ArboristClient(AuthzClient):
         url = "{}/{}/resources".format(self._user_url, urllib.quote(username))
         response = ArboristResponse(requests.get(url))
         if response.code != 200:
-            raise ArboristError(response.error_msg)
+            raise ArboristError(response.error_msg, response.code)
         return response.json["resources"]
 
 
@@ -586,7 +582,7 @@ class ArboristClient(AuthzClient):
                 .format(name, response.error_msg)
             )
             self.logger.error(msg)
-            raise ArboristError(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("put group {}".format(name))
         return response.json
 
@@ -615,12 +611,11 @@ class ArboristClient(AuthzClient):
         if response.code == 409:
             return None
         if "error" in response.json:
-            self.logger.error(
-                "could not create user `{}` in arborist: {}".format(
-                    username, response.json["error"]
-                )
+            msg = "could not create user `{}` in arborist: {}".format(
+                username, response.error_msg
             )
-            raise ArboristError(response.json["error"])
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("created user {}".format(username))
         return response.json
 
@@ -630,12 +625,11 @@ class ArboristClient(AuthzClient):
             self._client_url, json=dict(clientID=client_id, policies=policies or [])
         ))
         if "error" in response.json:
-            self.logger.error(
-                "could not create client `{}` in arborist: {}".format(
-                    client_id, response.json["error"]
-                )
+            msg = "could not create client `{}` in arborist: {}".format(
+                client_id, response.error_msg
             )
-            raise ArboristError(response.json["error"])
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("created client {}".format(client_id))
         return response.json
 
@@ -649,12 +643,11 @@ class ArboristClient(AuthzClient):
 
         # unpack the result
         if "error" in response.json:
-            self.logger.error(
-                "could not fetch client `{}` in arborist: {}".format(
-                    client_id, response.json["error"]
-                )
+            msg = "could not fetch client `{}` in arborist: {}".format(
+                client_id, response.error_msg
             )
-            raise ArboristError(response.json["error"])
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         current_policies = set(response.json["policies"])
         policies = set(policies)
 
@@ -664,12 +657,9 @@ class ArboristClient(AuthzClient):
             # if some policies must be removed, revoke all and re-grant later
             response = ArboristResponse(requests.delete(url))
             if response.code != 204:
-                self.logger.error(
-                    "could not revoke policies from client `{}` in arborist: {}".format(
-                        client_id, response.json.get("error")
-                    )
-                )
-                raise ArboristError(response.json.get("error"))
+                msg = "could not revoke policies from client `{}` in arborist: {}".format(client_id, response.error_msg)
+                self.logger.error(msg)
+                raise ArboristError(msg, response.code)
         else:
             # do not add policies that already exist
             policies.difference_update(current_policies)
@@ -678,12 +668,11 @@ class ArboristClient(AuthzClient):
         for policy in policies:
             response = ArboristResponse(requests.post(url, json=dict(policy=policy)), expect_json=False)
             if response.code != 204:
-                self.logger.error(
-                    "could not grant policy `{}` to client `{}` in arborist: {}".format(
-                        policy, client_id, response.json["error"]
-                    )
+                msg = "could not grant policy `{}` to client `{}` in arborist: {}".format(
+                    policy, client_id, response.error_msg
                 )
-                raise ArboristError(response.json["error"])
+                self.logger.error(msg)
+                raise ArboristError(msg, response.code)
         self.logger.info("updated policies for client {}".format(client_id))
 
     @_arborist_retry()
