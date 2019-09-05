@@ -161,7 +161,7 @@ class ArboristClient(AuthzClient):
             requests.post(self._auth_url.rstrip("/") + "/mapping", json=data)
         )
         if not response.successful:
-            raise ArboristError(message=response.error_msg)
+            raise ArboristError(response.error_msg)
         return response.json
 
     @_arborist_retry()
@@ -185,7 +185,7 @@ class ArboristClient(AuthzClient):
             requests.post(self._auth_url.rstrip("/") + "/request", json=data)
         )
         if not response.successful:
-            msg = "request to arborist failed: {}".format(response.json)
+            msg = "request to arborist failed: {}".format(response.error_msg)
             raise ArboristError(msg, response.code)
         elif response.code == 200:
             return bool(response.json["auth"])
@@ -193,10 +193,9 @@ class ArboristClient(AuthzClient):
             # arborist could send back a 400 for things like, the user has some policy
             # that it doesn't recognize, or the request is structured incorrectly; for
             # these cases we will default to unauthorized
-            msg = "arborist could not process auth request"
-            detail = response.error_msg
-            self.logger.info("{}: {}".format(msg, detail))
-            raise ArboristError("{}: {}".format(msg, detail), response.code)
+            msg = "arborist could not process auth request: {}".format(response.error_msg)
+            self.logger.info(msg)
+            raise ArboristError(msg, response.code)
 
     @_arborist_retry()
     def create_resource(self, parent_path, resource_json, create_parents=False):
@@ -263,11 +262,9 @@ class ArboristClient(AuthzClient):
             )
             return None
         if not response.successful:
-            self.logger.error(
-                "could not create resource `{}` in arborist: {}"
-                .format(path, response.error_msg)
-            )
-            raise ArboristError(response.error_msg, response.code)
+            msg = "could not create resource `{}` in arborist: {}".format(path, response.error_msg)
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info("created resource {}".format(resource_json["name"]))
         return response.json
 
