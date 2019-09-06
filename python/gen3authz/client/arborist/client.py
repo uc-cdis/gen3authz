@@ -150,6 +150,9 @@ class ArboristClient(AuthzClient):
     def put(self, url, data=None, **kwargs):
         return self.request("put", url, data=data, **kwargs)
 
+    def patch(self, url, data=None, **kwargs):
+        return self.request('patch', url, data=data, **kwargs)
+
     def delete(self, url, **kwargs):
         return self.request("delete", url, **kwargs)
 
@@ -313,7 +316,7 @@ class ArboristClient(AuthzClient):
         if not response.successful:
             self.logger.error(response.error_msg)
             raise ArboristError(response.error_msg, response.code)
-        return response
+        return response.json
 
     def update_resource(self, path, resource_json, create_parents=False):
         url = self._resource_url + urllib.quote(path)
@@ -344,7 +347,7 @@ class ArboristClient(AuthzClient):
         Return:
             list: policies (if any) that don't exist in arborist
         """
-        existing_policies = self.list_policies().get["policies"]
+        existing_policies = self.list_policies().get("policies", [])
         return [
             policy_id for policy_id in policy_ids if policy_id not in existing_policies
         ]
@@ -453,7 +456,7 @@ class ArboristClient(AuthzClient):
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
         self.logger.info("created policy {}".format(policy_json["id"]))
-        return response
+        return response.json
 
     def list_policies(self):
         """
