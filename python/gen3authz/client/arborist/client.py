@@ -3,6 +3,9 @@ Define the ArboristClient class for interfacing with the arborist service for
 authz.
 """
 
+import threading
+from collections import deque
+
 try:
     import urllib.parse as urllib
 except ImportError:
@@ -68,6 +71,44 @@ class ArboristResponse(object):
             return self._response.text
 
 
+class EnvContext(object):
+    __slots__ = ("_stack", "_kwargs")
+
+    def __init__(self, stack, kwargs):
+        self._stack = stack
+        self._kwargs = kwargs
+
+    def __enter__(self):
+        self._stack.append(self._kwargs)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._stack.pop()
+
+
+class Env(object):
+    __slots__ = ("_local",)
+
+    def __init__(self):
+        self._local = threading.local()
+
+    def _get_stack(self):
+        stack = getattr(self._local, "stack", None)
+        if stack is None:
+            stack = self._local.stack = deque()
+        return stack
+
+    def get_current(self, kwargs):
+        rv = {}
+        stack = self._get_stack()
+        if stack:
+            rv.update(stack[-1])
+        rv.update(kwargs)
+        return rv
+
+    def make_context(self, kwargs):
+        return EnvContext(self._get_stack(), kwargs)
+
+
 class ArboristClient(AuthzClient):
     """
     A singleton class for interfacing with the authz engine, "arborist".
@@ -92,6 +133,10 @@ class ArboristClient(AuthzClient):
         self._group_url = self._base_url + "/group"
         self._authz_provider = authz_provider
         self._timeout = timeout
+        self._env = Env()
+
+    def context(self, **kwargs):
+        return self._env.make_context(kwargs)
 
     # noinspection PyIncorrectDocstring
     def request(self, method, url, **kwargs):
@@ -109,11 +154,13 @@ class ArboristClient(AuthzClient):
         :param timeout: overwrite timeout parameter for ``requests``
         """
         expect_json = kwargs.pop("expect_json", True)
+        kwargs = self._env.get_current(kwargs)
         retry = kwargs.pop("retry", True)
         kwargs.setdefault("timeout", self._timeout)
-        if self._authz_provider:
+        authz_provider = kwargs.pop("authz_provider", self._authz_provider)
+        if authz_provider:
             headers = kwargs.setdefault("headers", {})
-            headers["X-AuthZ-Provider"] = self._authz_provider
+            headers["X-AuthZ-Provider"] = authz_provider
         try:
             rv = requests.request(method, url, **kwargs)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
@@ -151,7 +198,7 @@ class ArboristClient(AuthzClient):
         return self.request("put", url, data=data, **kwargs)
 
     def patch(self, url, data=None, **kwargs):
-        return self.request('patch', url, data=data, **kwargs)
+        return self.request("patch", url, data=data, **kwargs)
 
     def delete(self, url, **kwargs):
         return self.request("delete", url, **kwargs)
@@ -477,23 +524,19 @@ class ArboristClient(AuthzClient):
         """
         return self.get(self._policy_url).json
 
-    def update_policy(self, policy_json):
-        # Appease abstract base class
-        put_policy(policy_json)
-
-    def put_policy(self, policy_json):
+    def update_policy(self, policy_id, policy_json):
         """
         Arborist will create policy if not exist and overwrite if exist.
         """
-        url = self._policy_url + urllib.quote(policy_json["id"])
+        url = self._policy_url + urllib.quote(policy_id)
         response = self.put(url, json=policy_json)
         if not response.successful:
             msg = "could not put policy `{}` in arborist: {}".format(
-                policy_json["id"], response.error_msg
+                policy_id, response.error_msg
             )
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
-        self.logger.info("put policy {}".format(policy_json["id"]))
+        self.logger.info("put policy {}".format(policy_id))
         return response
 
     def create_user(self, user_info):
@@ -608,6 +651,23 @@ class ArboristClient(AuthzClient):
             )
             return None
         self.logger.info("added user `{}` to group `{}`".format(username, group_name))
+        return True
+
+    def remove_user_from_group(self, username, group_name):
+        url = self._group_url + "/{}/user/{}".format(
+            urllib.quote(group_name), urllib.quote(username)
+        )
+        response = self.delete(url, expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not remove user `{}` from group `{}`: {}".format(
+                    username, group_name, response.error_msg
+                )
+            )
+            return None
+        self.logger.info(
+            "removed user `{}` from group `{}`".format(username, group_name)
+        )
         return True
 
     def grant_group_policy(self, group_name, policy_id):

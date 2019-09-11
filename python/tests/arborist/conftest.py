@@ -51,11 +51,11 @@ def mock_arborist_request(request, arborist_base_url):
                     mocked_response.json.return_value = content
                 else:
                     mocked_response.text = content
-            return ArboristResponse(mocked_response)
+            return mocked_response
 
         mocked_method = mock.MagicMock(side_effect=response_for)
         patch_method = mock.patch(
-            "gen3authz.client.arborist.client.ArboristClient.request", mocked_method
+            "gen3authz.client.arborist.client.requests.request", mocked_method
         )
         patch_method.start()
         request.addfinalizer(patch_method.stop)
