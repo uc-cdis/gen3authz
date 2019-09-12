@@ -79,13 +79,17 @@ class EnvContext(object):
         self._kwargs = kwargs
 
     def __enter__(self):
-        self._stack.append(self._kwargs)
+        kwargs = {}
+        if self._stack:
+            kwargs.update(self._stack[-1])
+        kwargs.update(self._kwargs)
+        self._stack.append(kwargs)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._stack.pop()
 
 
-class Env(object):
+class _Env(object):
     __slots__ = ("_local",)
 
     def __init__(self):
@@ -97,7 +101,7 @@ class Env(object):
             stack = self._local.stack = deque()
         return stack
 
-    def get_current(self, kwargs):
+    def get_current_with(self, kwargs):
         rv = {}
         stack = self._get_stack()
         if stack:
@@ -119,7 +123,7 @@ class ArboristClient(AuthzClient):
         logger=None,
         arborist_base_url="http://arborist-service/",
         authz_provider=None,
-        timeout=(10, None),
+        timeout=10,
     ):
         self.logger = logger or get_logger("ArboristClient")
         self._base_url = arborist_base_url.strip("/")
@@ -133,7 +137,7 @@ class ArboristClient(AuthzClient):
         self._group_url = self._base_url + "/group"
         self._authz_provider = authz_provider
         self._timeout = timeout
-        self._env = Env()
+        self._env = _Env()
 
     def context(self, **kwargs):
         return self._env.make_context(kwargs)
@@ -144,7 +148,7 @@ class ArboristClient(AuthzClient):
         Wrapper method of ``requests.request`` adding retry, timeout and headers.
 
         If the actual request fails to connect or timed out, this client will retry the
-        same request if ``retry`` evaluates as ``True`` after Arborist becomes healthy.
+        same request if ``retry`` is truthy after Arborist becomes healthy.
         By default, it will retry health check up to 5 times, waiting for a maximum of
         10 seconds, before giving up and declaring Arborist unavailable.
 
@@ -154,16 +158,20 @@ class ArboristClient(AuthzClient):
         :param timeout: overwrite timeout parameter for ``requests``
         """
         expect_json = kwargs.pop("expect_json", True)
-        kwargs = self._env.get_current(kwargs)
+        kwargs = self._env.get_current_with(kwargs)
         retry = kwargs.pop("retry", True)
-        kwargs.setdefault("timeout", self._timeout)
         authz_provider = kwargs.pop("authz_provider", self._authz_provider)
+
+        kwargs.setdefault("timeout", self._timeout)
         if authz_provider:
             headers = kwargs.setdefault("headers", {})
             headers["X-AuthZ-Provider"] = authz_provider
         try:
             rv = requests.request(method, url, **kwargs)
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ConnectTimeout,
+        ):
             if retry:
                 if isinstance(retry, bool):
                     retry = {}
@@ -203,7 +211,7 @@ class ArboristClient(AuthzClient):
     def delete(self, url, **kwargs):
         return self.request("delete", url, **kwargs)
 
-    def healthy(self):
+    def healthy(self, timeout=1):
         """
         Indicate whether the arborist service is available and functioning.
 
@@ -212,7 +220,7 @@ class ArboristClient(AuthzClient):
         """
         try:
             response = self.get(
-                self._health_url, retry=False, timeout=1, expect_json=False
+                self._health_url, retry=False, timeout=timeout, expect_json=False
             )
         except requests.RequestException as e:
             self.logger.error(

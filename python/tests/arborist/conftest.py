@@ -9,7 +9,7 @@ import time
 import pytest
 import requests
 
-from gen3authz.client.arborist.client import ArboristClient, ArboristResponse
+from gen3authz.client.arborist.client import ArboristClient
 
 
 @pytest.fixture(scope="session")

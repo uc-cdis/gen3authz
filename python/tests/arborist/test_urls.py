@@ -19,7 +19,7 @@ def test_get_resource_call(arborist_client, mock_arborist_request):
         arborist_client._base_url + "/resource/a/b/c",
         allow_redirects=True,
         params=None,
-        timeout=(10, None),
+        timeout=10,
     )
 
 
@@ -31,7 +31,7 @@ def test_list_policies_call(arborist_client, mock_arborist_request):
         arborist_client._base_url + "/policy/",
         allow_redirects=True,
         params=None,
-        timeout=(10, None),
+        timeout=10,
     )
 
 
@@ -43,7 +43,7 @@ def test_policies_not_exist_call(arborist_client, mock_arborist_request):
         arborist_client._base_url + "/policy/",
         allow_redirects=True,
         params=None,
-        timeout=(10, None),
+        timeout=10,
     )
 
 
@@ -55,7 +55,7 @@ def test_create_resource_call(arborist_client, mock_arborist_request):
         arborist_client._base_url + "/resource/",
         data=None,
         json={"name": "test"},
-        timeout=(10, None),
+        timeout=10,
     )
 
 
@@ -67,7 +67,7 @@ def test_create_role_call(arborist_client, mock_arborist_request):
         arborist_client._base_url + "/role/",
         data=None,
         json={"id": "test"},
-        timeout=(10, None),
+        timeout=10,
     )
 
 
@@ -81,7 +81,7 @@ def test_create_policy(arborist_client, mock_arborist_request):
         arborist_client._base_url + "/policy/",
         data=None,
         json={"id": "test", "resource_paths": ["/"], "role_ids": ["test"]},
-        timeout=(10, None),
+        timeout=10,
     )
 
 
@@ -97,5 +97,5 @@ def test_create_policy_with_ctx(arborist_client, mock_arborist_request):
         data=None,
         json={"id": "test", "resource_paths": ["/"], "role_ids": ["test"]},
         headers={"X-AuthZ-Provider": "ttt"},
-        timeout=(10, None),
+        timeout=10,
     )
