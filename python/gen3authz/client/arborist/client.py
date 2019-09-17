@@ -498,7 +498,7 @@ class ArboristClient(AuthzClient):
 
     def create_policy(self, policy_json, skip_if_exists=True):
         response = self.post(self._policy_url, json=policy_json)
-        if response.code == 409:
+        if response.code == 409 and skip_if_exists:
             # already exists; this is ok, but leave warning
             self.logger.warning(
                 "policy `{}` already exists in arborist".format(policy_json["id"])
