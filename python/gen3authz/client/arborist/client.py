@@ -246,7 +246,7 @@ class ArboristClient(AuthzClient):
         data = {"username": username}
         response = self.post(self._auth_url.rstrip("/") + "/mapping", json=data)
         if not response.successful:
-            raise ArboristError(response.error_msg)
+            raise ArboristError(response.error_msg, response.code)
         return response.json
 
     def auth_request(self, jwt, service, methods, resources):
@@ -391,7 +391,10 @@ class ArboristClient(AuthzClient):
         url = self._resource_url + urllib.quote(path)
         response = self.delete(url)
         if response.code not in [204, 404]:
-            raise ArboristError
+            msg = "could not delete resource `{}` in arborist: {}".format(
+                path, response.error_msg
+            )
+            raise ArboristError(msg, response.code)
         return True
 
     def policies_not_exist(self, policy_ids):
