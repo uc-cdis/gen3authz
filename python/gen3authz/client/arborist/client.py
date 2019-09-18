@@ -541,8 +541,19 @@ class ArboristClient(AuthzClient):
                 "Policy id in policy_json either not provided or not equal to policy_id. Setting policy id in json to policy_id."
             )
             policy_json["id"] = policy_id
-        url = self._policy_url + urllib.quote(policy_id)
-        response = self.put(url, json=policy_json)
+        try:
+            # Arborist 3.x.x
+            url = self._policy_url + urllib.quote(policy_id)
+            response = self.put(url, json=policy_json)
+        except ArboristError as e:
+            if e.code == 405:
+                # For compatibility with Arborist 2.x.x
+                self.logger.info(
+                    "This Arborist version has no PUT /policy/{policyID} endpt yet. Falling back on PUT /policy"
+                )
+                response = self.put(self._policy_url, json=policy_json)
+            else:
+                raise
         if response.code == 404 and create_if_not_exist:
             self.logger.info("Policy `{}` does not exist: Creating".format(policy_id))
             return self.create_policy(policy_json, skip_if_exists=False)
