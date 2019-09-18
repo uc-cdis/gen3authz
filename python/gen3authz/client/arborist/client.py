@@ -532,10 +532,15 @@ class ArboristClient(AuthzClient):
         """
         return self.get(self._policy_url).json
 
-    def update_policy(self, policy_id, policy_json, create_if_not_exist=True):
+    def update_policy(self, policy_id, policy_json, create_if_not_exist=False):
         """
         Arborist will create policy if not exist and overwrite if exist.
         """
+        if policy_json.get("id", "") != policy_id:
+            self.logger.warn(
+                "Policy id in policy_json either not provided or not equal to policy_id. Setting policy id in json to policy_id."
+            )
+            policy_json["id"] = policy_id
         url = self._policy_url + urllib.quote(policy_id)
         response = self.put(url, json=policy_json)
         if response.code == 404 and create_if_not_exist:
