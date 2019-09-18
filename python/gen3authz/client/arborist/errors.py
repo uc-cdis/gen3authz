@@ -4,8 +4,8 @@ from cdiserrors import APIError, InternalError, AuthZError
 class ArboristError(APIError):
     """Generic exception related to problems with arborist."""
 
-    def __init__(self, message=None, code=500):
-        self.message = message or "Arborist error"
+    def __init__(self, message, code):
+        self.message = message
         self.code = code
         self.json = {"error": self.message, "code": self.code}
 
