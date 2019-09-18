@@ -532,32 +532,17 @@ class ArboristClient(AuthzClient):
         """
         return self.get(self._policy_url).json
 
-    def update_policy(self, policy_id, policy_json):
+    def update_policy(self, policy_id, policy_json, create_if_not_exist=True):
         """
         Arborist will create policy if not exist and overwrite if exist.
         """
         url = self._policy_url + urllib.quote(policy_id)
         response = self.put(url, json=policy_json)
-        if not response.successful:
-            msg = "could not put policy `{}` in arborist: {}".format(
-                policy_id, response.error_msg
-            )
-            self.logger.error(msg)
-            raise ArboristError(msg, response.code)
-        self.logger.info("put policy {}".format(policy_id))
-        return response
-
-    def upsert_policy(self, policy_id, policy_json):
-        """
-        Try update policy, if 404 then create policy instead
-        """
-        url = self._policy_url + urllib.quote(policy_id)
-        response = self.put(url, json=policy_json)
-        if response.code == 404:
+        if response.code == 404 and create_if_not_exist:
             self.logger.info("Policy `{}` does not exist: Creating".format(policy_id))
             return self.create_policy(policy_json, skip_if_exists=False)
-        elif not response.successful:
-            msg = "Upsert could not PUT policy `{}` in arborist: {}".format(
+        if not response.successful:
+            msg = "could not put policy `{}` in arborist: {}".format(
                 policy_id, response.error_msg
             )
             self.logger.error(msg)
