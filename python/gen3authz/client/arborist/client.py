@@ -536,11 +536,12 @@ class ArboristClient(AuthzClient):
         """
         Arborist will create policy if not exist and overwrite if exist.
         """
-        if policy_json.get("id") and policy_json.get("id", "") != policy_id:
-            self.logger.warn(
-                "id in policy_json provided but not equal to policy_id in url. Setting policy id in json to policy_id."
-            )
-            policy_json["id"] = policy_id
+        if policy_json.get("id") != policy_id:
+            if "id" in policy_json:
+                self.logger.warn(
+                    "id in policy_json provided but not equal to policy_id in url. Setting policy id in json to policy_id."
+                )
+                policy_json["id"] = policy_id
         try:
             # Arborist 3.x.x
             url = self._policy_url + urllib.quote(policy_id)
