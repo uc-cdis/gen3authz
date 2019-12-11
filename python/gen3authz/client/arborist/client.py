@@ -630,6 +630,15 @@ class ArboristClient(AuthzClient):
         self.logger.info("revoked all policies from user `{}`".format(username))
         return True
 
+    def list_groups(self):
+        response = self.get(self._group_url)
+        if response.code != 200:
+            self.logger.error("could not list groups: {}".format(response.error_msg))
+            return None
+        groups = response.json
+        self.logger.info("got arborist groups: `{}`".format(groups))
+        return groups
+
     def create_group(self, name, description="", users=[], policies=[]):
         data = {"name": name, "users": users, "policies": policies}
         if description:
