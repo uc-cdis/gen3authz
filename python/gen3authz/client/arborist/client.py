@@ -666,6 +666,17 @@ class ArboristClient(AuthzClient):
         self.logger.info("put group {}".format(name))
         return response.json
 
+    def delete_group(self, group_name):
+        url = self._group_url + "/{}".format(urllib.quote(group_name))
+        response = self.delete(url)
+        if response.code != 204:
+            self.logger.error(
+                "could not delete group `{}`: {}".format(group_name, response.error_msg)
+            )
+            return None
+        self.logger.info("deleted group `{}`".format(group_name))
+        return True
+
     def add_user_to_group(self, username, group_name, expires_at=None):
         url = self._group_url + "/{}/user".format(urllib.quote(group_name))
         request = dict(username=username)
