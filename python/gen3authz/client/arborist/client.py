@@ -3,6 +3,7 @@ Define the ArboristClient class for interfacing with the arborist service for
 authz.
 """
 
+import json
 import threading
 from collections import deque
 
@@ -354,6 +355,26 @@ class ArboristClient(AuthzClient):
         self.logger.info("created resource {}".format(resource_json["name"]))
         return response.json
 
+    def list_resources(self):
+        """
+        Return the information for a resource in arborist.
+
+        Args:
+            resource_path (str): path for the resource
+
+        Return:
+            dict: JSON representation of the resource
+        """
+        response = self.get(self._resource_url)
+        if response.code != 200:
+            self.logger.error("could not list resources: {}".format(response.error_msg))
+            raise ArboristError(response.error_msg, response.code)
+        resources = response.json
+        self.logger.info(
+            "got arborist resources: `{}`".format(json.dumps(resources, indent=2))
+        )
+        return resources
+
     def get_resource(self, path):
         """
         Return the information for a resource in arborist.
@@ -634,9 +655,11 @@ class ArboristClient(AuthzClient):
         response = self.get(self._group_url)
         if response.code != 200:
             self.logger.error("could not list groups: {}".format(response.error_msg))
-            return None
+            raise ArboristError(response.error_msg, response.code)
         groups = response.json
-        self.logger.info("got arborist groups: `{}`".format(groups))
+        self.logger.info(
+            "got arborist groups: `{}`".format(json.dumps(groups, indent=2))
+        )
         return groups
 
     def create_group(self, name, users=[], policies=[]):
