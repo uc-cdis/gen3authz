@@ -639,10 +639,11 @@ class ArboristClient(AuthzClient):
         self.logger.info("got arborist groups: `{}`".format(groups))
         return groups
 
-    def create_group(self, name, description="", users=[], policies=[]):
+    def create_group(self, name, users=[], policies=[]):
         data = {"name": name, "users": users, "policies": policies}
-        if description:
-            data["description"] = description
+        # Arborist doesn't handle group descriptions yet
+        # if description:
+        #     data["description"] = description
         response = self.post(self._group_url, json=data)
         if response.code == 409:
             # already exists; this is ok, but leave warning
@@ -677,7 +678,7 @@ class ArboristClient(AuthzClient):
 
     def delete_group(self, group_name):
         url = self._group_url + "/{}".format(urllib.quote(group_name))
-        response = self.delete(url)
+        response = self.delete(url, expect_json=False)
         if response.code != 204:
             self.logger.error(
                 "could not delete group `{}`: {}".format(group_name, response.error_msg)
