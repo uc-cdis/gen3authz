@@ -1,0 +1,5 @@
+python/gen3authz/*
+python/setup.py
+python/th_wrapper.py
+python/Pipfile
+python/Pipfile.lock
