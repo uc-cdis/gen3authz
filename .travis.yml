@@ -1,25 +1,22 @@
 dist: xenial
 language: python
 python:
-- 2.7
+- 3.6
 - 3.7
 cache:
 - pip
 - apt
 install:
 - cd python
-- pip install pipenv
-- pipenv install --dev --skip-lock --python `which python`
-- pipenv graph
+- curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+- $HOME/.poetry/bin/poetry install
+- $HOME/.poetry/bin/poetry run pip list
 script:
-- pipenv run py.test -vv --cov=rbac --cov-report xml tests
-- pipenv run python th_wrapper.py -w truffles.json -c thog_config.json -g file:///${PWD}/../ --check
+- $HOME/.poetry/bin/poetry run pytest -vv --cov=src --cov-report xml tests
+- $HOME/.poetry/bin/poetry run python th_wrapper.py -w truffles.json -c thog_config.json -g file:///${PWD}/../ --check
 after_script:
-- pipenv run python-codacy-coverage -r coverage.xml
-before_deploy:
-- sed -i.bak "s/=get_version()/='$TRAVIS_TAG'/g" setup.py
-- cat setup.py
-- if [ $(python setup.py --version) == '0.0.0' ]; then travis_terminate 1; fi
+- pip install codacy-coverage
+- python-codacy-coverage -r coverage.xml
 deploy:
   provider: pypi
   user: uc-ctds
@@ -32,8 +29,8 @@ deploy:
   password:
     secure: eZ1s62cKDK9swavDx38G55z8aBsEyOC+kCpcE4eyYpEKH4ohyDgHawQQq9DyLTtWyHC9GZklhPLnn+MuhlEMOxTHbdkWuJ4Y7MK84S5EBHj0uMpxDvidEq2LqVu8zMxGJon1HITGEuAfm/DyR7kNnR9l82Nd0ofgdTekhuFeZczhUc1pNmqM8Sa/FyzwD9yr1v30Mx3gmN82vlNtXECCZwvjBrDzGGvYhUVhCjp2oJaK15aw4/qiPziZXMr4tjtD4T/vHrkvRXT1jtkgalIP0zKz/RbnHLd8bAhz7vjtuoHDH7mOMaHKsd/+ii66uNOKONXdNYaM8wCS9SYrzsPvEsywE22G2TCm86ChZWGZu0WdygOISeUzM+3BUOfXCoxdT17FxTF2y+0dcFjCJwwhcmvlIuUaP/V/RD+AIZiHs4iXoqM4SEB4Z9t28sPB5BgAn6MxMR3R8SVFK8ewcTVNI8VZt+9v0UqkvIi0YN1Wp0fZ6EhmDLsz8D/32PggODJJzShLSYOPzoDXKpei1fWRorcYV+bAu7AoA2YCqmGDjpBUkKXLSnPVpm3wANu+zlYpJgLnCvRo8NmWFvUdn7I3c5fuac7RL3xg+yyxgB7Ty1tsh8tFOLoL4tuu5VvJncDQgtC54PumOTPzx8+0GNxSFXFv889NgUZ6w1dYZOwCnCY=
 after_deploy:
-- pipenv run pip install gen3git
-- pipenv run gen3git release
+- pip install gen3git
+- gen3git release
 env:
   global:
   - PIPENV_IGNORE_VIRTUALENVS=1

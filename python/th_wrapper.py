@@ -56,6 +56,7 @@ DEFAULT_CONFIG = {
         "th_wrapper.py",
         "thog_config.json",
         "Pipfile.lock",
+        "poetry.lock",
         ".travis.yml",
         "truffles.json",
     ],

@@ -6,9 +6,10 @@ except ImportError:
     import mock
 import time
 
+import httpx
 import pytest
-import requests
 
+from gen3authz.client.arborist.async_client import ArboristClient as AsyncClient
 from gen3authz.client.arborist.client import ArboristClient
 
 
@@ -21,13 +22,21 @@ def arborist_base_url():
     return ""
 
 
-@pytest.fixture(scope="session")
-def arborist_client(arborist_base_url):
-    return ArboristClient(arborist_base_url=arborist_base_url)
+@pytest.fixture(scope="session", params=["async", ""])
+def use_async(request):
+    return request.param == "async"
 
 
 @pytest.fixture(scope="session")
-def mock_arborist_request(request, arborist_base_url):
+def arborist_client(arborist_base_url, use_async):
+    if use_async:
+        return AsyncClient(arborist_base_url=arborist_base_url)
+    else:
+        return ArboristClient(arborist_base_url=arborist_base_url)
+
+
+@pytest.fixture(scope="session")
+def mock_arborist_request(request, arborist_base_url, use_async):
     root = arborist_base_url
 
     def do_patch(response_mapping):
@@ -37,7 +46,7 @@ def mock_arborist_request(request, arborist_base_url):
 
         def response_for(method, url, *args, **kwargs):
             method = method.upper()
-            mocked_response = mock.MagicMock(requests.Response)
+            mocked_response = mock.MagicMock(httpx.Response)
             if url not in response_mapping:
                 mocked_response.status_code = 404
                 mocked_response.text = "NOT FOUND"
@@ -53,10 +62,21 @@ def mock_arborist_request(request, arborist_base_url):
                     mocked_response.text = content
             return mocked_response
 
-        mocked_method = mock.MagicMock(side_effect=response_for)
-        patch_method = mock.patch(
-            "gen3authz.client.arborist.client.requests.request", mocked_method
-        )
+        if use_async:
+
+            async def async_response_for(method, url, *args, **kwargs):
+                return response_for(method, url, *args, **kwargs)
+
+            mocked_method = mock.MagicMock(side_effect=async_response_for)
+            patch_method = mock.patch(
+                "gen3authz.client.arborist.client.httpx.AsyncClient.request",
+                mocked_method,
+            )
+        else:
+            mocked_method = mock.MagicMock(side_effect=response_for)
+            patch_method = mock.patch(
+                "gen3authz.client.arborist.client.httpx.Client.request", mocked_method
+            )
         patch_method.start()
         request.addfinalizer(patch_method.stop)
         return mocked_method
