@@ -1,10 +1,6 @@
-try:
-    # python3
-    from unittest import mock
-except ImportError:
-    # python2
-    import mock
+import asyncio
 import time
+from unittest import mock
 
 import httpx
 import pytest
@@ -65,6 +61,7 @@ def mock_arborist_request(request, arborist_base_url, use_async):
         if use_async:
 
             async def async_response_for(method, url, *args, **kwargs):
+                await asyncio.sleep(0)
                 return response_for(method, url, *args, **kwargs)
 
             mocked_method = mock.MagicMock(side_effect=async_response_for)

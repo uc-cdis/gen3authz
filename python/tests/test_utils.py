@@ -4,87 +4,86 @@ from gen3authz import utils
 
 
 def test_basic():
-    def get():
+    async def get():
         return "123"
 
-    def add(num):
+    async def add(num):
         return num + "789"
 
-    @utils.inline
-    def test():
+    @utils.maybe_sync
+    async def test():
         try:
-            rv = yield get()
+            rv = await get()
         except Exception as ee:
             rv = str(ee)
         else:
             rv += "456"
-        rv = yield add(rv)
-        utils.return_(rv)
+        rv = await add(rv)
+        return rv
 
     assert test() == "123456789"
 
 
 def test_exception():
-    def get():
+    async def get():
         return "123"
 
-    def add(num):
+    async def add(num):
         raise Exception("failed")
 
-    @utils.inline
-    def test():
+    @utils.maybe_sync
+    async def test():
         try:
-            rv = yield get()
+            rv = await get()
         except Exception as ee:
             rv = str(ee)
         else:
             rv += "456"
-        rv = yield add(rv)
-        utils.return_(rv)
+        rv = await add(rv)
+        return rv
 
     with pytest.raises(Exception, match="failed"):
         test()
 
 
 def test_catch_exception():
-    def get():
+    async def get():
         raise Exception("failed")
 
-    def add(num):
+    async def add(num):
         return num + "789"
 
-    @utils.inline
-    def test():
+    @utils.maybe_sync
+    async def test():
         try:
-            rv = yield get()
+            rv = await get()
         except Exception as ee:
             rv = str(ee)
         else:
             rv += "456"
-        rv = yield add(rv)
-        utils.return_(rv)
+        rv = await add(rv)
+        return rv
 
     assert test() == "failed789"
 
 
 def test_nested():
-    def get():
+    async def get():
         return "123"
 
-    @utils.inline
-    def add(num):
-        suffix = yield "789"
-        utils.return_(num + suffix)
+    async def add(num):
+        suffix = "789"
+        return num + suffix
 
-    @utils.inline
-    def test():
+    @utils.maybe_sync
+    async def test():
         try:
-            rv = yield get()
+            rv = await get()
         except Exception as ee:
             rv = str(ee)
         else:
             rv += "456"
-        rv = yield add(rv)
-        utils.return_(rv)
+        rv = await add(rv)
+        return rv
 
     assert test() == "123456789"

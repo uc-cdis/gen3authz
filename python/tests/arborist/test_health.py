@@ -1,17 +1,13 @@
 import pytest
 
-from gen3authz.utils import inline
-
 pytestmark = pytest.mark.asyncio
 
 
-@inline
-def test_health_endpoint(arborist_client, mock_arborist_request):
+async def test_health_endpoint(arborist_client, mock_arborist_request):
     mock_arborist_request({"/health": {"GET": (200, "OK")}})
-    assert (yield arborist_client.healthy())
+    assert await arborist_client.healthy()
 
 
-@inline
-def test_health_endpoint_unhealthy(arborist_client, mock_arborist_request):
+async def test_health_endpoint_unhealthy(arborist_client, mock_arborist_request):
     mock_arborist_request({"/health": {"GET": (400, "unhealthy")}})
-    assert not (yield arborist_client.healthy())
+    assert not await arborist_client.healthy()
