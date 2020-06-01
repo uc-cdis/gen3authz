@@ -35,7 +35,7 @@ description = "Gen3 shared exceptions and utilities."
 name = "cdiserrors"
 optional = false
 python-versions = ">=3.6,<4.0"
-version = "1.0.0b2"
+version = "1.0.0"
 
 [package.dependencies]
 cdislogging = ">=1.0.0,<2.0.0"
@@ -166,7 +166,7 @@ description = "Chromium HSTS Preload list as a Python package and updated daily"
 name = "hstspreload"
 optional = false
 python-versions = ">=3.6"
-version = "2020.5.19"
+version = "2020.5.30"
 
 [[package]]
 category = "main"
@@ -443,7 +443,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "197dfc7290bc90473ea54a21f341f47ae5dfe448da48544b7345d0e19ee5706d"
+content-hash = "b3ba948db6b6befc3270c5da255ff32a13c016f742f0ab5d2a22af1dab96459f"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -460,8 +460,8 @@ backoff = [
     {file = "backoff-1.10.0.tar.gz", hash = "sha256:b8fba021fac74055ac05eb7c7bfce4723aedde6cd0a504e5326bcb0bdd6d19a4"},
 ]
 cdiserrors = [
-    {file = "cdiserrors-1.0.0b2-py3-none-any.whl", hash = "sha256:76eba47931de1a313923976d2b84d2b95108f622b8cefb44842e817e158f585e"},
-    {file = "cdiserrors-1.0.0b2.tar.gz", hash = "sha256:6ff1fe70d83680df200ac23c556a4a55a7460ce7996b18be3e4ee4ceb0067ce3"},
+    {file = "cdiserrors-1.0.0-py3-none-any.whl", hash = "sha256:2e188645832e8c98468267af3e54bc5d3a298078b9869899256251e54dc1599d"},
+    {file = "cdiserrors-1.0.0.tar.gz", hash = "sha256:d6e56b0a9f6cc0104f4344f837b735fefb2caf8d0c4ef50569881dc140ebfc4a"},
 ]
 cdislogging = [
     {file = "cdislogging-1.0.0.tar.gz", hash = "sha256:a1cc2e48d5fc26d4b354b80c6497f1f1136f3e3e4f1d1855de8980ccf497fa0a"},
@@ -538,8 +538,8 @@ hpack = [
     {file = "hpack-3.0.0.tar.gz", hash = "sha256:8eec9c1f4bfae3408a3f30500261f7e6a65912dc138526ea054f9ad98892e9d2"},
 ]
 hstspreload = [
-    {file = "hstspreload-2020.5.19-py3-none-any.whl", hash = "sha256:6f8f617d8e0dc2f8e2851131b1d43de24adea875a1a9238b1baa1c6373f162cc"},
-    {file = "hstspreload-2020.5.19.tar.gz", hash = "sha256:d703d771d47035ad9298c14b84b8293a33fcbbfe6deedeeb35fa7e46dc3c619e"},
+    {file = "hstspreload-2020.5.30-py3-none-any.whl", hash = "sha256:2b59a47bda0d06833e7df5eaf6063a0d420ee9368b98ba7a2c617f66d50d7641"},
+    {file = "hstspreload-2020.5.30.tar.gz", hash = "sha256:d44cb7a113806e55f6e08f1dfac0254f1db2933989172fa481e59470c47340f3"},
 ]
 httpx = [
     {file = "httpx-0.12.1-py3-none-any.whl", hash = "sha256:ce51c8e8ed2834447fde5a94650299fd74017b7da69cc786b6421fefda09a393"},

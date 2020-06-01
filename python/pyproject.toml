@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "gen3authz"
-version = "1.0.0-beta.2"
+version = "1.0.0"
 description = "Gen3 authz client"
 authors = ["CTDS UChicago <cdis@uchicago.edu>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.6"
-cdiserrors = {version = "^1.0.0-beta.2", allow-prereleases = true}
+cdiserrors = "^1.0.0"
 backoff = "~=1.6"
 httpx = "^0.12.1"
 contextvars = { version = "^2.4", python = "<3.7" }
