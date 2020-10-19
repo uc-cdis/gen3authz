@@ -508,7 +508,7 @@ class BaseArboristClient(AuthzClient):
             )
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
-        self.logger.info("updated role {}".format(role_json["name"]))
+        self.logger.info("updated role {}".format(role_id))
         return response
 
     @maybe_sync
