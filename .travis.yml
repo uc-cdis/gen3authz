@@ -13,7 +13,6 @@ install:
 - $HOME/.poetry/bin/poetry run pip list
 script:
 - $HOME/.poetry/bin/poetry run pytest -vv --cov=src --cov-report xml tests
-- $HOME/.poetry/bin/poetry run python th_wrapper.py -w truffles.json -c thog_config.json -g file:///${PWD}/../ --check
 after_script:
 - pip install codacy-coverage
 - python-codacy-coverage -r coverage.xml
