@@ -552,7 +552,7 @@ class BaseArboristClient(AuthzClient):
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
         self.logger.info("created policy {}".format(policy_json["id"]))
-        return response
+        return response.json
 
     @maybe_sync
     async def list_policies(self):
@@ -601,6 +601,8 @@ class BaseArboristClient(AuthzClient):
         if response.code == 404 and create_if_not_exist:
             self.logger.info("Policy `{}` does not exist: Creating".format(policy_id))
             policy_json["id"] = policy_id
+            print("-------------------")
+            print(self.create_policy(policy_json, skip_if_exists=False))
             return await self.create_policy(policy_json, skip_if_exists=False)
         if not response.successful:
             msg = "could not put policy `{}` in arborist: {}".format(
