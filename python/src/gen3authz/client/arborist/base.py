@@ -552,7 +552,7 @@ class BaseArboristClient(AuthzClient):
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
         self.logger.info("created policy {}".format(policy_json["id"]))
-        return response.json
+        return response
 
     @maybe_sync
     async def list_policies(self):
