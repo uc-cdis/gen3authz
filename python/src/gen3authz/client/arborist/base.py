@@ -601,9 +601,7 @@ class BaseArboristClient(AuthzClient):
         if response.code == 404 and create_if_not_exist:
             self.logger.info("Policy `{}` does not exist: Creating".format(policy_id))
             policy_json["id"] = policy_id
-            print("-------------------")
-            print(self.create_policy(policy_json, skip_if_exists=False))
-            return await self.create_policy(policy_json, skip_if_exists=False)
+            return self.create_policy(policy_json, skip_if_exists=False)
         if not response.successful:
             msg = "could not put policy `{}` in arborist: {}".format(
                 policy_id, response.error_msg
