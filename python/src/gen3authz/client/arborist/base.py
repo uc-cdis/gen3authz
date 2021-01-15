@@ -216,6 +216,10 @@ class BaseArboristClient(AuthzClient):
         return self.request("delete", url, **kwargs)
 
     @maybe_sync
+    async def get_users(self, url, params=None, **kwargs):
+        return await self.get(url=url, params=params, **kwargs)
+
+    @maybe_sync
     async def healthy(self, timeout=1):
         """
         Indicate whether the arborist service is available and functioning.
@@ -601,7 +605,7 @@ class BaseArboristClient(AuthzClient):
         if response.code == 404 and create_if_not_exist:
             self.logger.info("Policy `{}` does not exist: Creating".format(policy_id))
             policy_json["id"] = policy_id
-            return self.create_policy(policy_json, skip_if_exists=False)
+            return await self._create_policy(policy_json, skip_if_exists=False)
         if not response.successful:
             msg = "could not put policy `{}` in arborist: {}".format(
                 policy_id, response.error_msg
@@ -885,3 +889,20 @@ class BaseArboristClient(AuthzClient):
         )
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
+
+    async def _create_policy(self, policy_json, skip_if_exists=True):
+        response = await self.post(self._policy_url, json=policy_json)
+        if response.code == 409 and skip_if_exists:
+            # already exists; this is ok, but leave warning
+            self.logger.warning(
+                "policy `{}` already exists in arborist".format(policy_json["id"])
+            )
+            return None
+        if not response.successful:
+            msg = "could not create policy `{}` in arborist: {}".format(
+                policy_json["id"], response.error_msg
+            )
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
+        self.logger.info("created policy {}".format(policy_json["id"]))
+        return response.json
