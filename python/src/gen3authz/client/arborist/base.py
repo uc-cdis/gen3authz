@@ -128,6 +128,7 @@ class BaseArboristClient(AuthzClient):
         self._auth_url = self._base_url + "/auth/"
         self._health_url = self._base_url + "/health"
         self._policy_url = self._base_url + "/policy/"
+        self._bulk_policy_url = self._base_url + "/bulk/policy"
         self._resource_url = self._base_url + "/resource"
         self._role_url = self._base_url + "/role/"
         self._user_url = self._base_url + "/user"
@@ -616,6 +617,25 @@ class BaseArboristClient(AuthzClient):
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
         self.logger.info("put policy {}".format(policy_id))
+        return response
+
+    @maybe_sync
+    async def update_bulk_polocy(self, policy_json, create_if_not_exist=False):
+        try:
+            url = self._bulk_policy_url
+            response = await self.put(url, json=policy_json)
+        except ArboristError as e:
+            if e.code == 405:
+                # For compatibility with Arborist 2.x.x
+                self.logger.info(
+                    "This Arborist version has no PUT /policy/{policyID} endpt yet."
+                    "Falling back on PUT /policy"
+                )
+                response = await self.put(self._policy_url, json=policy_json)
+            else:
+                raise
+        if response.code == 404 and create_if_not_exist:
+            return await self._create_policy(policy_json, skip_if_exists=False)
         return response
 
     @maybe_sync
