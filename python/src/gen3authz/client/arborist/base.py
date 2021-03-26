@@ -4,6 +4,7 @@ Base classes for interfacing with the arborist service for authz. Please use
 :class:`~.async_client.ArboristClient` in asynchronous context like FastAPI.
 """
 
+import inspect
 import json
 from collections import deque
 from urllib.parse import quote
@@ -440,7 +441,10 @@ class BaseArboristClient(AuthzClient):
         Return:
             list: policies (if any) that don't exist in arborist
         """
-        existing_policies = (await self.list_policies()).get("policies", [])
+        res = self.list_policies()
+        if inspect.isawaitable(res):  # handle list_policies maybe_sync
+            res = await res
+        existing_policies = res.get("policies", [])
         return [
             policy_id for policy_id in policy_ids if policy_id not in existing_policies
         ]
@@ -840,7 +844,9 @@ class BaseArboristClient(AuthzClient):
         # retrieve existing client, create one if not found
         response = await self.get("/".join((self._client_url, quote(client_id))))
         if response.code == 404:
-            await self.create_client(client_id, policies)
+            res = self.create_client(client_id, policies)
+            if inspect.isawaitable(res):  # handle create_client maybe_sync
+                await res
             return
 
         # unpack the result
