@@ -671,6 +671,20 @@ class BaseArboristClient(AuthzClient):
             return None
         self.logger.info("granted policy `{}` to user `{}`".format(policy_id, username))
         return response.code
+    
+    @maybe_sync
+    async def revoke_user_policy(self, username, policy_id):
+        url = self._user_url + "/{}/policy/{}".format(quote(username), quote(policy_id))
+        response = await self.delete(url, expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not revoke policies from user `{}`: {}`".format(
+                    username, response.error_msg
+                )
+            )
+            return None
+        self.logger.info("revoked policy {} from user `{}`".format(policy_id, username))
+        return True
 
     @maybe_sync
     async def revoke_all_policies_for_user(self, username):
