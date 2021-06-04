@@ -634,8 +634,6 @@ class BaseArboristClient(AuthzClient):
                 response = await self.put(self._policy_url, json=policy_json)
             else:
                 raise
-        if response.code == 404 and create_if_not_exist:
-            return await self._create_policy(policy_json, skip_if_exists=False)
         return response
 
     @maybe_sync
