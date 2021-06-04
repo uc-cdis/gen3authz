@@ -68,5 +68,9 @@ class AuthzClient(six.with_metaclass(abc.ABCMeta)):
         pass
 
     @abc.abstractmethod
+    def update_bulk_policy(self, policy_json):
+        pass
+
+    @abc.abstractmethod
     def delete_policy(self, policy_id):
         pass

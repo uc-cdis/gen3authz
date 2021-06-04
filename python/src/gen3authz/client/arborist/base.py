@@ -620,7 +620,7 @@ class BaseArboristClient(AuthzClient):
         return response
 
     @maybe_sync
-    async def update_bulk_polocy(self, policy_json, create_if_not_exist=False):
+    async def update_bulk_policy(self, policy_json, create_if_not_exist=False):
         try:
             url = self._bulk_policy_url
             response = await self.put(url, json=policy_json)
@@ -686,6 +686,28 @@ class BaseArboristClient(AuthzClient):
             )
             return None
         self.logger.info("granted policy `{}` to user `{}`".format(policy_id, username))
+        return response.code
+
+    @maybe_sync
+    async def grant_bulk_user_policy(self, username, policy_ids):
+        """
+        MUST be user name, and not serial user ID
+        """
+        url = self._user_url + "/{}/bulk/policy".format(quote(username))
+        request = []
+        for policy_id in policy_ids:
+            request.append({"policy": policy_id})
+        response = await self.post(url, json=request, expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not grant policies `{}` to user `{}`: {}".format(
+                    policy_ids, username, response.error_msg
+                )
+            )
+            return None
+        self.logger.info(
+            "granted policy `{}` to user `{}`".format(policy_ids, username)
+        )
         return response.code
 
     @maybe_sync
