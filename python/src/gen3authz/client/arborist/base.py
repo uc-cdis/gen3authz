@@ -129,6 +129,7 @@ class BaseArboristClient(AuthzClient):
         self._auth_url = self._base_url + "/auth/"
         self._health_url = self._base_url + "/health"
         self._policy_url = self._base_url + "/policy/"
+        self._bulk_policy_url = self._base_url + "/bulk/policy"
         self._resource_url = self._base_url + "/resource"
         self._role_url = self._base_url + "/role/"
         self._user_url = self._base_url + "/user"
@@ -623,6 +624,12 @@ class BaseArboristClient(AuthzClient):
         return response
 
     @maybe_sync
+    async def update_bulk_policy(self, policy_json):
+        url = self._bulk_policy_url
+        response = await self.put(url, json=policy_json)
+        return response
+
+    @maybe_sync
     async def create_user(self, user_info):
         """
         Args:
@@ -671,7 +678,7 @@ class BaseArboristClient(AuthzClient):
             return None
         self.logger.info("granted policy `{}` to user `{}`".format(policy_id, username))
         return response.code
-    
+
     @maybe_sync
     async def revoke_user_policy(self, username, policy_id):
         url = self._user_url + "/{}/policy/{}".format(quote(username), quote(policy_id))
@@ -685,6 +692,28 @@ class BaseArboristClient(AuthzClient):
             return None
         self.logger.info("revoked policy {} from user `{}`".format(policy_id, username))
         return True
+
+    @maybe_sync
+    async def grant_bulk_user_policy(self, username, policy_ids):
+        """
+        MUST be user name, and not serial user ID
+        """
+        url = self._user_url + "/{}/bulk/policy".format(quote(username))
+        request = []
+        for policy_id in policy_ids:
+            request.append({"policy": policy_id})
+        response = await self.post(url, json=request, expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not grant policies `{}` to user `{}`: {}".format(
+                    policy_ids, username, response.error_msg
+                )
+            )
+            return None
+        self.logger.info(
+            "granted policies `{}` to user `{}`".format(policy_ids, username)
+        )
+        return response.code
 
     @maybe_sync
     async def revoke_all_policies_for_user(self, username):
