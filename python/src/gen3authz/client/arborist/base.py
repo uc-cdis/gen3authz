@@ -624,20 +624,9 @@ class BaseArboristClient(AuthzClient):
         return response
 
     @maybe_sync
-    async def update_bulk_policy(self, policy_json, create_if_not_exist=False):
-        try:
-            url = self._bulk_policy_url
-            response = await self.put(url, json=policy_json)
-        except ArboristError as e:
-            if e.code == 405:
-                # For compatibility with Arborist 2.x.x
-                self.logger.info(
-                    "This Arborist version has no PUT /policy/{policyID} endpt yet."
-                    "Falling back on PUT /policy"
-                )
-                response = await self.put(self._policy_url, json=policy_json)
-            else:
-                raise
+    async def update_bulk_policy(self, policy_json):
+        url = self._bulk_policy_url
+        response = await self.put(url, json=policy_json)
         return response
 
     @maybe_sync
@@ -722,7 +711,7 @@ class BaseArboristClient(AuthzClient):
             )
             return None
         self.logger.info(
-            "granted policy `{}` to user `{}`".format(policy_ids, username)
+            "granted policies `{}` to user `{}`".format(policy_ids, username)
         )
         return response.code
 
