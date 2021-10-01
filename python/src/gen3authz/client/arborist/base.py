@@ -270,7 +270,7 @@ class BaseArboristClient(AuthzClient):
         # `resources` deprecated, replaced by `authz`
         assert bool(resources) ^ bool(
             authz
-        ), "Must specify either 'resources' or 'authz'"
+        ), f"Expected either 'resources' OR 'authz' but received 'resources={resources}' and 'authz={authz}'"
         if isinstance(methods, string_types):
             methods = [methods]
         if authz:
@@ -278,7 +278,7 @@ class BaseArboristClient(AuthzClient):
                 "user": {"token": jwt},
                 "request": {
                     "authz": authz,
-                    "action": [
+                    "actions": [
                         {"service": service, "method": method} for method in methods
                     ],
                 },
