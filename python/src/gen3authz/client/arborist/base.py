@@ -202,7 +202,7 @@ class BaseArboristClient(AuthzClient):
         return ArboristResponse(rv, expect_json=expect_json)
 
     def get(self, url, params=None, **kwargs):
-        kwargs.setdefault("allow_redirects", True)
+        kwargs.setdefault("follow_redirects", True)
         return self.request("get", url, params=params, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
