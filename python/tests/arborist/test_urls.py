@@ -13,7 +13,7 @@ async def test_get_resource_call(arborist_client, mock_arborist_request):
     mock_get.assert_called_with(
         "get",
         arborist_client._base_url + "/resource/a/b/c",
-        allow_redirects=True,
+        follow_redirects=True,
         params=None,
         timeout=10,
     )
@@ -25,7 +25,7 @@ async def test_list_policies_call(arborist_client, mock_arborist_request):
     mock_get.assert_called_with(
         "get",
         arborist_client._base_url + "/policy/",
-        allow_redirects=True,
+        follow_redirects=True,
         params=None,
         timeout=10,
     )
@@ -37,7 +37,7 @@ async def test_policies_not_exist_call(arborist_client, mock_arborist_request):
     mock_get.assert_called_with(
         "get",
         arborist_client._base_url + "/policy/",
-        allow_redirects=True,
+        follow_redirects=True,
         params=None,
         timeout=10,
     )
