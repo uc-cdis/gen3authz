@@ -567,7 +567,7 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def list_policies(self):
+    async def list_policies(self, expand=False):
         """
         List the existing policies.
 
@@ -584,7 +584,10 @@ class BaseArboristClient(AuthzClient):
             }
 
         """
-        return (await self.get(self._policy_url)).json
+        url = self._policy_url
+        if expand:
+            url = f"{url}?expand"
+        return (await self.get(url)).json
 
     @maybe_sync
     async def update_policy(self, policy_id, policy_json, create_if_not_exist=False):
