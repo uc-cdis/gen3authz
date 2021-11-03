@@ -222,6 +222,14 @@ class BaseArboristClient(AuthzClient):
         return await self.get(url=self._user_url, params=params, **kwargs)
 
     @maybe_sync
+    async def get_user(self, username):
+        url = "{}/{}".format(self._user_url, quote(username))
+        response = await self.get(url)
+        if response.code != 204:
+            raise ArboristError(response.error_msg, response.code)
+        return response.json
+
+    @maybe_sync
     async def healthy(self, timeout=1):
         """
         Indicate whether the arborist service is available and functioning.
