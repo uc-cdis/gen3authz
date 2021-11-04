@@ -32,7 +32,7 @@ class AuthzClient(six.with_metaclass(abc.ABCMeta)):
         pass
 
     @abc.abstractmethod
-    def list_policies(self):
+    def list_policies(self, expand=False):
         pass
 
     @abc.abstractmethod

@@ -222,6 +222,14 @@ class BaseArboristClient(AuthzClient):
         return await self.get(url=self._user_url, params=params, **kwargs)
 
     @maybe_sync
+    async def get_user(self, username):
+        url = "{}/{}".format(self._user_url, quote(username))
+        response = await self.get(url)
+        if response.code != 204:
+            raise ArboristError(response.error_msg, response.code)
+        return response.json
+
+    @maybe_sync
     async def healthy(self, timeout=1):
         """
         Indicate whether the arborist service is available and functioning.
@@ -567,7 +575,7 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def list_policies(self):
+    async def list_policies(self, expand=False):
         """
         List the existing policies.
 
@@ -584,7 +592,10 @@ class BaseArboristClient(AuthzClient):
             }
 
         """
-        return (await self.get(self._policy_url)).json
+        url = self._policy_url
+        if expand:
+            url = f"{url}?expand"
+        return (await self.get(url)).json
 
     @maybe_sync
     async def update_policy(self, policy_id, policy_json, create_if_not_exist=False):
