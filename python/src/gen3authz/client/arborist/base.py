@@ -270,7 +270,7 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def auth_request(self, service, methods, resources, jwt=None, user_id=None):
+    async def auth_request(self, jwt, service, methods, resources, user_id=None):
         """
         Return:
             bool: authorization response

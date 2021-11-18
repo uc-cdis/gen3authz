@@ -12,7 +12,7 @@ class AuthzClient(six.with_metaclass(abc.ABCMeta)):
         """Indicate whether the authz service is available."""
 
     @abc.abstractmethod
-    def auth_request(self, service, method, resource, jwt=None, user_id=None):
+    def auth_request(self, jwt, service, method, resource, user_id=None):
         pass
 
     @abc.abstractmethod
