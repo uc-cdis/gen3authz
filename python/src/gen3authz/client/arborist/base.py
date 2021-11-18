@@ -270,7 +270,7 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def auth_request(self, jwt, service, methods, resources):
+    async def auth_request(self, service, methods, resources, jwt=None, user_id=None):
         """
         Return:
             bool: authorization response
@@ -280,13 +280,18 @@ class BaseArboristClient(AuthzClient):
         if isinstance(methods, string_types):
             methods = [methods]
         data = {
-            "user": {"token": jwt},
             "requests": [
                 {"resource": resource, "action": {"service": service, "method": method}}
                 for resource in resources
                 for method in methods
             ],
         }
+
+        if user_id:
+            data["user"] = {"user_id": user_id}
+        elif jwt:
+            data["user"] = {"token": jwt}
+
         response = await self.post(self._auth_url.rstrip("/") + "/request", json=data)
         if not response.successful:
             msg = "request to arborist failed: {}".format(response.error_msg)
