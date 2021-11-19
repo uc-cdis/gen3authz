@@ -272,6 +272,22 @@ class BaseArboristClient(AuthzClient):
     @maybe_sync
     async def auth_request(self, jwt, service, methods, resources, user_id=None):
         """
+        Args:
+            jwt (str):
+                valid jwt access token
+            service (str):
+                service name the user is checking access to (ex. fence, indexd)
+            methods (list/str):
+                Identifier for the action the user is trying to do. Like ``resource``, this
+                is something that has to exist in arborist already.
+            resources (list/str):
+                List of identifiers for the thing being accessed. These look like filepaths. This
+                ``resources`` must correspond to some resource entered previously in
+                arborist.
+            user_id (str):
+                User's user id that corresponds to the user id in the arborist usr table.
+                NOTE: user_id overrides any jwt token provided
+
         Return:
             bool: authorization response
         """
