@@ -270,8 +270,24 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def auth_request(self, jwt, service, methods, resources):
+    async def auth_request(self, jwt, service, methods, resources, user_id=None):
         """
+        Args:
+            jwt (str):
+                valid jwt access token
+            service (str):
+                service name the user is checking access to (ex. fence, indexd)
+            methods (list/str):
+                Identifier for the action the user is trying to do. Like ``resource``, this
+                is something that has to exist in arborist already.
+            resources (list/str):
+                List of identifiers for the thing being accessed. These look like filepaths. This
+                ``resources`` must correspond to some resource entered previously in
+                arborist.
+            user_id (str):
+                User's user id that corresponds to the user id in the arborist usr table.
+                NOTE: user_id overrides any jwt token provided
+
         Return:
             bool: authorization response
         """
@@ -280,13 +296,18 @@ class BaseArboristClient(AuthzClient):
         if isinstance(methods, string_types):
             methods = [methods]
         data = {
-            "user": {"token": jwt},
             "requests": [
                 {"resource": resource, "action": {"service": service, "method": method}}
                 for resource in resources
                 for method in methods
             ],
         }
+
+        if user_id:
+            data["user"] = {"user_id": user_id}
+        elif jwt:
+            data["user"] = {"token": jwt}
+
         response = await self.post(self._auth_url.rstrip("/") + "/request", json=data)
         if not response.successful:
             msg = "request to arborist failed: {}".format(response.error_msg)
