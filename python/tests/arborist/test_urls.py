@@ -3,6 +3,7 @@ Run some basic tests that the methods on ``ArboristClient`` actually try to hit
 the correct URLs on the arborist API.
 """
 import pytest
+import datetime
 
 pytestmark = pytest.mark.asyncio
 
@@ -93,5 +94,28 @@ async def test_create_policy_with_ctx(arborist_client, mock_arborist_request):
         data=None,
         json={"id": "test", "resource_paths": ["/"], "role_ids": ["test"]},
         headers={"X-AuthZ-Provider": "ttt"},
+        timeout=10,
+    )
+
+
+async def test_grant_user_policy(arborist_client, mock_arborist_request):
+    username = "johnsmith"
+    expires_at = datetime.datetime(
+        year=2021, month=11, day=23, hour=9, minute=30, second=1
+    )
+    mock_post = mock_arborist_request(
+        {f"/user/{username}/policy": {"POST": (204, None)}}
+    )
+    assert (
+        await arborist_client.grant_user_policy(
+            username, "test_policy", expires_at=expires_at
+        )
+        == 204
+    )
+    mock_post.assert_called_with(
+        "post",
+        arborist_client._base_url + f"/user/{username}/policy",
+        data=None,
+        json={"policy": "test_policy", "expires_at": "2021-11-23T09:30:01Z"},
         timeout=10,
     )

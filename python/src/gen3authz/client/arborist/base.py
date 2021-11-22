@@ -694,12 +694,19 @@ class BaseArboristClient(AuthzClient):
         return response.json["resources"]
 
     @maybe_sync
-    async def grant_user_policy(self, username, policy_id):
+    async def grant_user_policy(self, username, policy_id, expires_at=None):
         """
-        MUST be user name, and not serial user ID
+        Grant a policy to a user
+
+        Args:
+            username (str): MUST be user's username, and not serial user ID
+            policy_id (str): Arborist policy id
+            expires_at (datetime.datetime): when the policy should expire
         """
         url = self._user_url + "/{}/policy".format(quote(username))
         request = {"policy": policy_id}
+        if expires_at:
+            request["expires_at"] = expires_at.isoformat() + "Z"
         response = await self.post(url, json=request, expect_json=False)
         if response.code != 204:
             self.logger.error(
