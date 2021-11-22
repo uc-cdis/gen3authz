@@ -11,6 +11,7 @@ cdiserrors = "<2.0.0"
 backoff = "~=1.6"
 httpx = ">=0.20.0,<1.0.0"
 contextvars = { version = "^2.4", python = "<3.7" }
+six = "^1.16.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.2"
