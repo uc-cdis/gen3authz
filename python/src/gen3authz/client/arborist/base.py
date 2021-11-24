@@ -679,6 +679,40 @@ class BaseArboristClient(AuthzClient):
             self.logger.error(response.error_msg)
 
     @maybe_sync
+    async def update_user(self, username, new_username=None, new_email=None):
+        """
+        Update an existing user's username and/or email. At least one of
+        new_username, new_email must be passed a value that is not None.
+
+        Args:
+            username (str): username of user to be updated
+            new_username (str): new username to update user with
+            new_email (str): new email to update user with
+
+        Return:
+            int: Arborist response status code
+        """
+        url = "{}/{}".format(self._user_url, quote(username))
+        request = {}
+        if new_username is not None:
+            request["name"] = new_username
+        if new_email is not None:
+            request["email"] = new_email
+        if len(request) == 0:
+            raise ValueError(
+                "update_user requires that at least one of new_username, "
+                "new_email be passed a value that is not None"
+            )
+        response = await self.patch(url, json=request, expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not update user with request body `{}`. status code: {}. error message: {}".format(
+                    request, response.code, response.error_msg
+                )
+            )
+        return response.code
+
+    @maybe_sync
     async def list_resources_for_user(self, username):
         """
         Args:
@@ -701,7 +735,7 @@ class BaseArboristClient(AuthzClient):
         Args:
             username (str): MUST be user's username, and not serial user ID
             policy_id (str): Arborist policy id
-            expires_at (datetime.datetime): when the policy should expire
+            expires_at (datetime.datetime): when the policy should expire (in UTC)
         """
         url = self._user_url + "/{}/policy".format(quote(username))
         request = {"policy": policy_id}

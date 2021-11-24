@@ -119,3 +119,23 @@ async def test_grant_user_policy(arborist_client, mock_arborist_request):
         json={"policy": "test_policy", "expires_at": "2021-11-23T09:30:01Z"},
         timeout=10,
     )
+
+
+async def test_update_user(arborist_client, mock_arborist_request):
+    username = "johnsmith"
+    new_username = "janesmith"
+    new_email = "janesmith@domain.tld"
+    mock_post = mock_arborist_request({f"/user/{username}": {"PATCH": (204, None)}})
+    assert (
+        await arborist_client.update_user(
+            username, new_username=new_username, new_email=new_email
+        )
+        == 204
+    )
+    mock_post.assert_called_with(
+        "patch",
+        arborist_client._base_url + f"/user/{username}",
+        data=None,
+        json={"name": new_username, "email": new_email},
+        timeout=10,
+    )
