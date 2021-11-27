@@ -4,6 +4,7 @@ the correct URLs on the arborist API.
 """
 import pytest
 import datetime
+from gen3authz.client.arborist.errors import ArboristError
 
 pytestmark = pytest.mark.asyncio
 
@@ -126,12 +127,10 @@ async def test_update_user(arborist_client, mock_arborist_request):
     new_username = "janesmith"
     new_email = "janesmith@domain.tld"
     mock_post = mock_arborist_request({f"/user/{username}": {"PATCH": (204, None)}})
-    assert (
-        await arborist_client.update_user(
-            username, new_username=new_username, new_email=new_email
-        )
-        == 204
+    response = await arborist_client.update_user(
+        username, new_username=new_username, new_email=new_email
     )
+    assert response.code == 204
     mock_post.assert_called_with(
         "patch",
         arborist_client._base_url + f"/user/{username}",
@@ -139,3 +138,14 @@ async def test_update_user(arborist_client, mock_arborist_request):
         json={"name": new_username, "email": new_email},
         timeout=10,
     )
+
+
+async def test_update_user_raises_error(arborist_client, mock_arborist_request):
+    username = "johnsmith"
+    new_username = "janesmith"
+    mock_post = mock_arborist_request({f"/user/{username}": {"PATCH": (500, None)}})
+    # with pytest.raises(Exception):
+    with pytest.raises(ArboristError):
+        response = await arborist_client.update_user(
+            username, new_username=new_username
+        )

@@ -690,7 +690,11 @@ class BaseArboristClient(AuthzClient):
             new_email (str): new email to update user with
 
         Return:
-            int: Arborist response status code
+            ArboristResponse: Arborist response
+
+        Raises:
+            - ValueError: if this function is called incorrectly
+            - ArboristError: if the operation failed (couldn't update user)
         """
         url = "{}/{}".format(self._user_url, quote(username))
         request = {}
@@ -703,14 +707,23 @@ class BaseArboristClient(AuthzClient):
                 "update_user requires that at least one of new_username, "
                 "new_email be passed a value that is not None"
             )
+        if username == new_username:
+            raise ValueError(
+                "update_user requires that new_username not be equal to username"
+            )
         response = await self.patch(url, json=request, expect_json=False)
         if response.code != 204:
-            self.logger.error(
-                "could not update user with request body `{}`. status code: {}. error message: {}".format(
-                    request, response.code, response.error_msg
-                )
+            msg = "could not update Arborist user `{}` with request body `{}`. status code: {}. error message: {}".format(
+                username, request, response.code, response.error_msg
             )
-        return response.code
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
+        self.logger.info(
+            "successfully updated Arborist user `{}` with request body `{}`".format(
+                username, request
+            )
+        )
+        return response
 
     @maybe_sync
     async def list_resources_for_user(self, username):
