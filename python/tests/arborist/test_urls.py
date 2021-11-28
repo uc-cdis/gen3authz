@@ -144,7 +144,6 @@ async def test_update_user_raises_error(arborist_client, mock_arborist_request):
     username = "johnsmith"
     new_username = "janesmith"
     mock_post = mock_arborist_request({f"/user/{username}": {"PATCH": (500, None)}})
-    # with pytest.raises(Exception):
     with pytest.raises(ArboristError):
         response = await arborist_client.update_user(
             username, new_username=new_username
