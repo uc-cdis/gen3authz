@@ -101,8 +101,16 @@ async def test_create_policy_with_ctx(arborist_client, mock_arborist_request):
 
 async def test_grant_user_policy(arborist_client, mock_arborist_request):
     username = "johnsmith"
-    expires_at = datetime.datetime(
-        year=2021, month=11, day=23, hour=9, minute=30, second=1
+    expires_at = int(
+        datetime.datetime(
+            year=2021,
+            month=11,
+            day=23,
+            hour=9,
+            minute=30,
+            second=1,
+            tzinfo=datetime.timezone.utc,
+        ).timestamp()
     )
     mock_post = mock_arborist_request(
         {f"/user/{username}/policy": {"POST": (204, None)}}

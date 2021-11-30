@@ -6,6 +6,7 @@ Base classes for interfacing with the arborist service for authz. Please use
 
 import inspect
 import json
+import datetime
 from collections import deque
 from urllib.parse import quote
 
@@ -748,11 +749,12 @@ class BaseArboristClient(AuthzClient):
         Args:
             username (str): MUST be user's username, and not serial user ID
             policy_id (str): Arborist policy id
-            expires_at (datetime.datetime): when the policy should expire (in UTC)
+            expires_at (int): POSIX timestamp for when the policy should expire
         """
         url = self._user_url + "/{}/policy".format(quote(username))
         request = {"policy": policy_id}
-        if expires_at:
+        if expires_at is not None:
+            expires_at = datetime.datetime.utcfromtimestamp(expires_at)
             request["expires_at"] = expires_at.isoformat() + "Z"
         response = await self.post(url, json=request, expect_json=False)
         if response.code != 204:
