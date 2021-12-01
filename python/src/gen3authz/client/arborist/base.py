@@ -226,7 +226,7 @@ class BaseArboristClient(AuthzClient):
     async def get_user(self, username):
         url = "{}/{}".format(self._user_url, quote(username))
         response = await self.get(url)
-        if response.code != 204:
+        if response.code != 200:
             raise ArboristError(response.error_msg, response.code)
         return response.json
 
