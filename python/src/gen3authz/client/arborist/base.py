@@ -6,6 +6,7 @@ Base classes for interfacing with the arborist service for authz. Please use
 
 import inspect
 import json
+import datetime
 from collections import deque
 from urllib.parse import quote
 
@@ -679,6 +680,53 @@ class BaseArboristClient(AuthzClient):
             self.logger.error(response.error_msg)
 
     @maybe_sync
+    async def update_user(self, username, new_username=None, new_email=None):
+        """
+        Update an existing user's username and/or email. At least one of
+        new_username, new_email must be passed a value that is not None.
+
+        Args:
+            username (str): username of user to be updated
+            new_username (str): new username to update user with
+            new_email (str): new email to update user with
+
+        Return:
+            ArboristResponse: Arborist response
+
+        Raises:
+            - ValueError: if this function is called incorrectly
+            - ArboristError: if the operation failed (couldn't update user)
+        """
+        url = "{}/{}".format(self._user_url, quote(username))
+        request = {}
+        if new_username is not None:
+            request["name"] = new_username
+        if new_email is not None:
+            request["email"] = new_email
+        if len(request) == 0:
+            raise ValueError(
+                "update_user requires that at least one of new_username, "
+                "new_email be passed a value that is not None"
+            )
+        if username == new_username:
+            raise ValueError(
+                "update_user requires that new_username not be equal to username"
+            )
+        response = await self.patch(url, json=request, expect_json=False)
+        if response.code != 204:
+            msg = "could not update Arborist user `{}` with request body `{}`. status code: {}. error message: {}".format(
+                username, request, response.code, response.error_msg
+            )
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
+        self.logger.info(
+            "successfully updated Arborist user `{}` with request body `{}`".format(
+                username, request
+            )
+        )
+        return response
+
+    @maybe_sync
     async def list_resources_for_user(self, username):
         """
         Args:
@@ -694,12 +742,20 @@ class BaseArboristClient(AuthzClient):
         return response.json["resources"]
 
     @maybe_sync
-    async def grant_user_policy(self, username, policy_id):
+    async def grant_user_policy(self, username, policy_id, expires_at=None):
         """
-        MUST be user name, and not serial user ID
+        Grant a policy to a user
+
+        Args:
+            username (str): MUST be user's username, and not serial user ID
+            policy_id (str): Arborist policy id
+            expires_at (int): POSIX timestamp for when the policy should expire
         """
         url = self._user_url + "/{}/policy".format(quote(username))
         request = {"policy": policy_id}
+        if expires_at is not None:
+            expires_at = datetime.datetime.utcfromtimestamp(expires_at)
+            request["expires_at"] = expires_at.isoformat() + "Z"
         response = await self.post(url, json=request, expect_json=False)
         if response.code != 204:
             self.logger.error(

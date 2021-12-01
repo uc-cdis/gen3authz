@@ -3,6 +3,8 @@ Run some basic tests that the methods on ``ArboristClient`` actually try to hit
 the correct URLs on the arborist API.
 """
 import pytest
+import datetime
+from gen3authz.client.arborist.errors import ArboristError
 
 pytestmark = pytest.mark.asyncio
 
@@ -95,3 +97,62 @@ async def test_create_policy_with_ctx(arborist_client, mock_arborist_request):
         headers={"X-AuthZ-Provider": "ttt"},
         timeout=10,
     )
+
+
+async def test_grant_user_policy(arborist_client, mock_arborist_request):
+    username = "johnsmith"
+    expires_at = int(
+        datetime.datetime(
+            year=2021,
+            month=11,
+            day=23,
+            hour=9,
+            minute=30,
+            second=1,
+            tzinfo=datetime.timezone.utc,
+        ).timestamp()
+    )
+    mock_post = mock_arborist_request(
+        {f"/user/{username}/policy": {"POST": (204, None)}}
+    )
+    assert (
+        await arborist_client.grant_user_policy(
+            username, "test_policy", expires_at=expires_at
+        )
+        == 204
+    )
+    mock_post.assert_called_with(
+        "post",
+        arborist_client._base_url + f"/user/{username}/policy",
+        data=None,
+        json={"policy": "test_policy", "expires_at": "2021-11-23T09:30:01Z"},
+        timeout=10,
+    )
+
+
+async def test_update_user(arborist_client, mock_arborist_request):
+    username = "johnsmith"
+    new_username = "janesmith"
+    new_email = "janesmith@domain.tld"
+    mock_post = mock_arborist_request({f"/user/{username}": {"PATCH": (204, None)}})
+    response = await arborist_client.update_user(
+        username, new_username=new_username, new_email=new_email
+    )
+    assert response.code == 204
+    mock_post.assert_called_with(
+        "patch",
+        arborist_client._base_url + f"/user/{username}",
+        data=None,
+        json={"name": new_username, "email": new_email},
+        timeout=10,
+    )
+
+
+async def test_update_user_raises_error(arborist_client, mock_arborist_request):
+    username = "johnsmith"
+    new_username = "janesmith"
+    mock_post = mock_arborist_request({f"/user/{username}": {"PATCH": (500, None)}})
+    with pytest.raises(ArboristError):
+        response = await arborist_client.update_user(
+            username, new_username=new_username
+        )
