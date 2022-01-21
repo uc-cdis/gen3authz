@@ -132,6 +132,7 @@ class BaseArboristClient(AuthzClient):
         self._policy_url = self._base_url + "/policy/"
         self._bulk_policy_url = self._base_url + "/bulk/policy"
         self._resource_url = self._base_url + "/resource"
+        self._bulk_resource_url = self._base_url + "/bulk/resource"
         self._role_url = self._base_url + "/role/"
         self._user_url = self._base_url + "/user"
         self._client_url = self._base_url + "/client"
@@ -400,6 +401,12 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
+    async def create_bulk_resource(self, resource_json):
+        url = self._bulk_resource_url
+        response = await self.post(url, json=resource_json)
+        return response
+
+    @maybe_sync
     async def list_resources(self):
         """
         Return the information for all resources in Arborist.
@@ -663,6 +670,12 @@ class BaseArboristClient(AuthzClient):
         return response
 
     @maybe_sync
+    async def create_bulk_policy(self, policy_json):
+        url = self._bulk_policy_url
+        response = await self.post(url, json=policy_json)
+        return response
+
+    @maybe_sync
     async def create_user(self, user_info):
         """
         Args:
@@ -782,14 +795,21 @@ class BaseArboristClient(AuthzClient):
         return True
 
     @maybe_sync
-    async def grant_bulk_user_policy(self, username, policy_ids):
+    async def grant_bulk_user_policy(self, username, policy_ids, expires_at=None):
         """
         MUST be user name, and not serial user ID
         """
+        if expires_at is not None:
+            expires_at = (
+                datetime.datetime.utcfromtimestamp(expires_at).isoformat() + "Z"
+            )
         url = self._user_url + "/{}/bulk/policy".format(quote(username))
         request = []
         for policy_id in policy_ids:
-            request.append({"policy": policy_id})
+            policy = {"policy": policy_id}
+            if expires_at is not None:
+                policy["expires_at"] = expires_at
+            request.append(policy)
         response = await self.post(url, json=request, expect_json=False)
         if response.code != 204:
             self.logger.error(
