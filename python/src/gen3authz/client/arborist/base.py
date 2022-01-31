@@ -194,9 +194,11 @@ class BaseArboristClient(AuthzClient):
                         for n in backoff.fibo():
                             yield n / 2.0
 
-                    await backoff.on_predicate(wait_gen, on_giveup=giveup, **retry)(
+                    res = backoff.on_predicate(wait_gen, on_giveup=giveup, **retry)(
                         self.healthy
                     )()
+                    if inspect.isawaitable(res):
+                        res = await res
                     rv = await client.request(method, url, **kwargs)
                 else:
                     raise
