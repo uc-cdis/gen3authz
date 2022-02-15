@@ -440,10 +440,18 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def update_resource(self, path, resource_json, create_parents=False):
+    async def update_resource(
+        self, path, resource_json, create_parents=False, merge=False
+    ):
         url = self._resource_url + quote(path)
+        parameters = []
         if create_parents:
-            url = url + "?p"
+            parameters.append("p")
+        if merge:
+            parameters.append("merge")
+        if parameters:
+            url = url + "?" + "&".join(parameters)
+
         response = await self.put(url, json=resource_json)
         if not response.successful:
             msg = "could not update resource `{}` in arborist: {}".format(
