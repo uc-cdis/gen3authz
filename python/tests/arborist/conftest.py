@@ -18,7 +18,7 @@ def arborist_base_url():
     return ""
 
 
-@pytest.fixture(scope="session", params=["async", ""])
+@pytest.fixture(scope="session", params=["async", "sync"])
 def use_async(request):
     return request.param == "async"
 
