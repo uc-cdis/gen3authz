@@ -30,3 +30,6 @@ class ArboristClient(BaseArboristClient):
     """
 
     client_cls = SyncClient
+
+    def _is_async(self):
+        return False

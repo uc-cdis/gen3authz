@@ -9,6 +9,7 @@ import json
 import datetime
 from collections import deque
 from urllib.parse import quote
+from functools import wraps
 
 import backoff
 import contextvars
@@ -18,7 +19,6 @@ from cdislogging import get_logger
 from ..arborist.errors import ArboristError, ArboristUnhealthyError
 from ..base import AuthzClient
 from ... import string_types
-from ...utils import maybe_sync
 
 
 def _escape_newlines(text):
@@ -118,6 +118,27 @@ class BaseArboristClient(AuthzClient):
 
     client_cls = NotImplemented
 
+    def maybe_sync(m):
+        """
+        Decorator using _is_async method to determine whether m behaves
+        asynchronously or synchronously
+        """
+
+        @wraps(m)
+        def _wrapper(instance, *args, **kwargs):
+            coro = m(instance, *args, **kwargs)
+            if instance._is_async():
+                return coro
+
+            result = None
+            try:
+                while True:
+                    result = coro.send(result)
+            except StopIteration as si:
+                return si.value
+
+        return _wrapper
+
     def __init__(
         self,
         logger=None,
@@ -139,6 +160,9 @@ class BaseArboristClient(AuthzClient):
         self._authz_provider = authz_provider
         self._timeout = timeout
         self._env = _Env()
+
+    def _is_async(self):
+        return True
 
     def context(self, **kwargs):
         return self._env.make_context(kwargs)
