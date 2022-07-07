@@ -569,7 +569,7 @@ class BaseArboristClient(AuthzClient):
 
     @maybe_sync
     async def list_roles(self):
-        return await self.get(self._role_url)
+        return (await self.get(self._role_url)).json
 
     @maybe_sync
     async def update_role(self, role_id, role_json):
