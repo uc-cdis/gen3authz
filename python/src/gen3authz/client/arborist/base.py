@@ -297,6 +297,21 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
+    async def client_auth_mapping(self, client_id):
+        """
+        For given client, get mapping from the resources that this client can access
+        to the actions on those resources for which it is authorized.
+
+        Return:
+            dict: response JSON from arborist
+        """
+        data = {"clientID": client_id}
+        response = await self.post(self._auth_url.rstrip("/") + "/mapping", json=data)
+        if not response.successful:
+            raise ArboristError(response.error_msg, response.code)
+        return response.json
+
+    @maybe_sync
     async def auth_request(self, jwt, service, methods, resources, user_id=None):
         """
         Args:

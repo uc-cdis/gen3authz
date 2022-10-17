@@ -8,20 +8,19 @@ cache:
 - apt
 install:
 - cd python
-- curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-- $HOME/.poetry/bin/poetry install
-- $HOME/.poetry/bin/poetry run pip list
+- pip install poetry
+- poetry install
 script:
-- $HOME/.poetry/bin/poetry run pytest -vv --cov=src --cov-report xml tests
+- poetry run pytest -vv --cov=src --cov-report xml tests
 after_script:
 - pip install codacy-coverage
 - python-codacy-coverage -r coverage.xml
 before_deploy:
-- $HOME/.poetry/bin/poetry config http-basic.pypi $PYPI_USER $PYPI_PASSWORD
-- $HOME/.poetry/bin/poetry build
+- poetry config http-basic.pypi $PYPI_USER $PYPI_PASSWORD
+- poetry build
 deploy:
   provider: script
-  script: "$HOME/.poetry/bin/poetry publish"
+  script: "poetry publish"
   skip_cleanup: true
   on:
     python: 3.7
