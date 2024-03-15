@@ -167,6 +167,7 @@ class BaseArboristClient(AuthzClient):
     def context(self, **kwargs):
         return self._env.make_context(kwargs)
 
+    @maybe_sync
     async def request(self, method, url, **kwargs):
         """
         Wrapper method of ``requests.request`` adding retry, timeout and headers.
