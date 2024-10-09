@@ -248,6 +248,10 @@ async def test_can_user_access_resources(
                             {"service": "service2", "method": "read"},
                             {"service": "service1", "method": "write"},
                         ],
+                        "/d": [
+                            {"service": "service1", "method": "write"},
+                            {"service": "service1", "method": "read"},
+                        ],
                     },
                 )
             }
@@ -258,7 +262,7 @@ async def test_can_user_access_resources(
         username="test-user",
         service="service1",
         method="read",
-        resource_paths=["/a", "/a/b", "/c"],
+        resource_paths=["/a", "/a/b", "/c", "/d"],
     )
     if use_async:
         res = await res
@@ -266,4 +270,5 @@ async def test_can_user_access_resources(
     # /a: right service and method => True
     # /a/b: nested under /a which is accessible => True
     # /c: right service, wrong method and right method, wrong service => False
-    assert res == {"/a": True, "/a/b": True, "/c": False}
+    # /d: one of the permissions is the right service and method => True
+    assert res == {"/a": True, "/a/b": True, "/c": False, "/d": True}
