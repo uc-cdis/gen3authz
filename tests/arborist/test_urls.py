@@ -2,6 +2,7 @@
 Run some basic tests that the methods on ``ArboristClient`` actually try to hit
 the correct URLs on the arborist API.
 """
+
 import pytest
 import datetime
 from gen3authz.client.arborist.errors import ArboristError
@@ -205,3 +206,67 @@ async def test_update_user_raises_error(
             )
         else:
             response = arborist_client.update_user(username, new_username=new_username)
+
+
+async def test_auth_request_positive(arborist_client, mock_arborist_request, use_async):
+    mock_arborist_request({"/auth/request": {"POST": (200, {"auth": True})}})
+    if use_async:
+        assert await arborist_client.auth_request(
+            "", "fence", "file_upload", "/data_upload"
+        )
+    else:
+        assert (
+            arborist_client.auth_request("", "fence", "file_upload", "/data_upload")
+            is True
+        )
+
+
+async def test_can_user_access_resources(
+    arborist_client, mock_arborist_request, use_async
+):
+    with pytest.raises(
+        AssertionError, match="'username' and 'jwt' cannot both be provided"
+    ):
+        await arborist_client.can_user_access_resources(
+            username="test-user",
+            jwt="abc",
+            service="service1",
+            method="read",
+            resource_paths=[],
+        )
+
+    mock_arborist_request(
+        {
+            "/auth/mapping": {
+                "POST": (
+                    200,
+                    {
+                        "/a": [{"service": "service1", "method": "read"}],
+                        "/c": [
+                            {"service": "service2", "method": "read"},
+                            {"service": "service1", "method": "write"},
+                        ],
+                        "/d": [
+                            {"service": "service1", "method": "write"},
+                            {"service": "service1", "method": "read"},
+                        ],
+                    },
+                )
+            }
+        }
+    )
+
+    res = arborist_client.can_user_access_resources(
+        username="test-user",
+        service="service1",
+        method="read",
+        resource_paths=["/a", "/a/b", "/c", "/d"],
+    )
+    if use_async:
+        res = await res
+
+    # /a: right service and method => True
+    # /a/b: nested under /a which is accessible => True
+    # /c: right service, wrong method and right method, wrong service => False
+    # /d: one of the permissions is the right service and method => True
+    assert res == {"/a": True, "/a/b": True, "/c": False, "/d": True}
