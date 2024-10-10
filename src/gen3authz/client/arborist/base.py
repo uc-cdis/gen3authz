@@ -290,25 +290,25 @@ class BaseArboristClient(AuthzClient):
 
         Args:
             jwt (str): user's valid jwt access token
-            username (str): username (exactly one of `jwt` and `username` must be provided)
+            username (str): username
 
         Return:
             dict: response JSON from arborist
         """
-        assert bool(username) != bool(
-            jwt
-        ), "Exactly one of 'username' or 'jwt' must be provided"
+        assert not (username and jwt), "'username' and 'jwt' cannot both be provided"
         if username:
             data = {"username": username}
             response = await self.post(
                 self._auth_url.rstrip("/") + "/mapping",
                 json=data,
             )
-        else:
+        elif jwt:
             response = await self.post(
                 self._auth_url.rstrip("/") + "/mapping",
                 headers={"Authorization": f"bearer {jwt}"},
             )
+        else:
+            response = await self.post(self._auth_url.rstrip("/") + "/mapping")
         if not response.successful:
             raise ArboristError(response.error_msg, response.code)
         return response.json
@@ -1114,7 +1114,7 @@ class BaseArboristClient(AuthzClient):
             method (str): method to check the access for
             resource_paths (list): resource paths to check the access for
             jwt (str): user's valid jwt access token
-            username (str): username (exactly one of `jwt` and `username` must be provided)
+            username (str): username
 
         Return:
             dict: for each provided resource path, whether or not the user has access to the

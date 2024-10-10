@@ -224,11 +224,9 @@ async def test_auth_request_positive(arborist_client, mock_arborist_request, use
 async def test_can_user_access_resources(
     arborist_client, mock_arborist_request, use_async
 ):
-    with pytest.raises(AssertionError, match="Exactly one"):
-        await arborist_client.can_user_access_resources(
-            service="service1", method="read", resource_paths=[]
-        )
-    with pytest.raises(AssertionError, match="Exactly one"):
+    with pytest.raises(
+        AssertionError, match="'username' and 'jwt' cannot both be provided"
+    ):
         await arborist_client.can_user_access_resources(
             username="test-user",
             jwt="abc",
