@@ -301,12 +301,12 @@ class BaseArboristClient(AuthzClient):
         if username:
             data = {"username": username}
             response = await self.post(
-                self._auth_url.rstrip("/") + "/mapping", json=data
+                self._auth_url.rstrip("/") + "/mapping",
+                json=data,
             )
         else:
             response = await self.post(
                 self._auth_url.rstrip("/") + "/mapping",
-                json=data,
                 headers={"Authorization": f"bearer {jwt}"},
             )
         if not response.successful:
