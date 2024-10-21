@@ -224,9 +224,7 @@ async def test_auth_request_positive(arborist_client, mock_arborist_request, use
 async def test_can_user_access_resources(
     arborist_client, mock_arborist_request, use_async
 ):
-    with pytest.raises(
-        AssertionError, match="'username' and 'jwt' cannot both be provided"
-    ):
+    with pytest.raises(AssertionError, match="Both 'username' and 'jwt' were provided"):
         await arborist_client.can_user_access_resources(
             username="test-user",
             jwt="abc",
@@ -244,10 +242,12 @@ async def test_can_user_access_resources(
                             {"service": "service2", "method": "read"},
                             {"service": "service1", "method": "write"},
                         ],
+                        "/c/f": [{"service": "service1", "method": "read"}],
                         "/d": [
-                            {"service": "service1", "method": "read"},
+                            {"service": "service1", "method": "*"},
                             {"service": "service2", "method": "write"},
                         ],
+                        "/e": [{"service": "*", "method": "*"}],
                     },
                 )
             }
@@ -261,13 +261,18 @@ async def test_can_user_access_resources(
             "/a/b": {"service": "service1", "method": "read"},
             "/c": {"service": "service1", "method": "read"},
             "/d": {"service": "service2", "method": "write"},
+            "/d/g": {"service": "service2", "method": "*"},
+            "/e": {"service": "*", "method": "write"},
         },
     )
     if use_async:
         res = await res
 
-    # /a: right service and method => True
-    # /a/b: nested under /a which is accessible => True
-    # /c: right service, wrong method and right method, wrong service => False
-    # /d: one of the permissions is the right service and method => True
-    assert res == {"/a": True, "/a/b": True, "/c": False, "/d": True}
+    assert res == {
+        "/a": True,  # right service and method => True
+        "/a/b": True,  # /a/b nested under /a which is accessible => True
+        "/c": False,  # right service, wrong method and right method, wrong service => False
+        "/d": True,  # one of the permissions is a matching service and method => True
+        "/d/g": False,  # wrong method: user only has "write" access on service2, not "*" access
+        "/e": True,  # matching service and method => True
+    }

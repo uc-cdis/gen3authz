@@ -295,19 +295,18 @@ class BaseArboristClient(AuthzClient):
         Return:
             dict: response JSON from arborist
         """
-        assert not (username and jwt), "'username' and 'jwt' cannot both be provided"
+        assert not (username and jwt), "Both 'username' and 'jwt' were provided"
         if username:
-            data = {"username": username}
             response = await self.post(
                 self._auth_url.rstrip("/") + "/mapping",
-                json=data,
+                json={"username": username},
             )
         elif jwt:
             response = await self.post(
                 self._auth_url.rstrip("/") + "/mapping",
                 headers={"Authorization": f"bearer {jwt}"},
             )
-        else:
+        else:  # anonymous call
             response = await self.post(self._auth_url.rstrip("/") + "/mapping")
         if not response.successful:
             raise ArboristError(response.error_msg, response.code)
