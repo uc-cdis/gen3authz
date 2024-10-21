@@ -2,6 +2,7 @@
 Run some basic tests that the methods on ``ArboristClient`` actually try to hit
 the correct URLs on the arborist API.
 """
+
 import pytest
 import datetime
 from gen3authz.client.arborist.errors import ArboristError
@@ -205,3 +206,73 @@ async def test_update_user_raises_error(
             )
         else:
             response = arborist_client.update_user(username, new_username=new_username)
+
+
+async def test_auth_request_positive(arborist_client, mock_arborist_request, use_async):
+    mock_arborist_request({"/auth/request": {"POST": (200, {"auth": True})}})
+    if use_async:
+        assert await arborist_client.auth_request(
+            "", "fence", "file_upload", "/data_upload"
+        )
+    else:
+        assert (
+            arborist_client.auth_request("", "fence", "file_upload", "/data_upload")
+            is True
+        )
+
+
+async def test_can_user_access_resources(
+    arborist_client, mock_arborist_request, use_async
+):
+    with pytest.raises(AssertionError, match="Both 'username' and 'jwt' were provided"):
+        await arborist_client.can_user_access_resources(
+            username="test-user",
+            jwt="abc",
+            resources={"/a": {"service": "service1", "method": "read"}},
+        )
+
+    mock_arborist_request(
+        {
+            "/auth/mapping": {
+                "POST": (
+                    200,
+                    {
+                        "/a": [{"service": "service1", "method": "read"}],
+                        "/c": [
+                            {"service": "service2", "method": "read"},
+                            {"service": "service1", "method": "write"},
+                        ],
+                        "/c/f": [{"service": "service1", "method": "read"}],
+                        "/d": [
+                            {"service": "service1", "method": "*"},
+                            {"service": "service2", "method": "write"},
+                        ],
+                        "/e": [{"service": "*", "method": "*"}],
+                    },
+                )
+            }
+        }
+    )
+
+    res = arborist_client.can_user_access_resources(
+        username="test-user",
+        resources={
+            "/a": {"service": "service1", "method": "read"},
+            "/a/b": {"service": "service1", "method": "read"},
+            "/c": {"service": "service1", "method": "read"},
+            "/d": {"service": "service2", "method": "write"},
+            "/d/g": {"service": "service2", "method": "*"},
+            "/e": {"service": "*", "method": "write"},
+        },
+    )
+    if use_async:
+        res = await res
+
+    assert res == {
+        "/a": True,  # right service and method => True
+        "/a/b": True,  # /a/b nested under /a which is accessible => True
+        "/c": False,  # right service, wrong method and right method, wrong service => False
+        "/d": True,  # one of the permissions is a matching service and method => True
+        "/d/g": False,  # wrong method: user only has "write" access on service2, not "*" access
+        "/e": True,  # matching service and method => True
+    }

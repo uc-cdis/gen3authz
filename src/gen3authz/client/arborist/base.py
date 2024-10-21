@@ -18,6 +18,7 @@ from cdislogging import get_logger
 
 from ..arborist.errors import ArboristError, ArboristUnhealthyError
 from ..base import AuthzClient
+from ...utils import is_path_prefix_of_path
 from ... import string_types
 
 
@@ -282,16 +283,31 @@ class BaseArboristClient(AuthzClient):
         return response.code == 200
 
     @maybe_sync
-    async def auth_mapping(self, username):
+    async def auth_mapping(self, username: str = "", jwt: str = ""):
         """
         For given user, get mapping from the resources that this user can access
         to the actions on those resources for which they are authorized.
 
+        Args:
+            jwt (str): user's valid jwt access token
+            username (str): username
+
         Return:
             dict: response JSON from arborist
         """
-        data = {"username": username}
-        response = await self.post(self._auth_url.rstrip("/") + "/mapping", json=data)
+        assert not (username and jwt), "Both 'username' and 'jwt' were provided"
+        if username:
+            response = await self.post(
+                self._auth_url.rstrip("/") + "/mapping",
+                json={"username": username},
+            )
+        elif jwt:
+            response = await self.post(
+                self._auth_url.rstrip("/") + "/mapping",
+                headers={"Authorization": f"bearer {jwt}"},
+            )
+        else:  # anonymous call
+            response = await self.post(self._auth_url.rstrip("/") + "/mapping")
         if not response.successful:
             raise ArboristError(response.error_msg, response.code)
         return response.json
@@ -368,7 +384,6 @@ class BaseArboristClient(AuthzClient):
 
     @maybe_sync
     async def create_resource(self, parent_path, resource_json, create_parents=False):
-
         """
         Create a new resource in arborist (does not affect fence database or
         otherwise have any interaction with userdatamodel).
@@ -1078,3 +1093,42 @@ class BaseArboristClient(AuthzClient):
         )
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
+
+    @maybe_sync
+    async def can_user_access_resources(
+        self,
+        resources: dict,
+        username: str = "",
+        jwt: str = "",
+    ):
+        """
+        Using the user's authz mapping, return "true" for each resource path the user has access
+        to, and "false" for each resource path they don't have access to. Takes into account that
+        if a user has access to "/a", they also have access to "/a/b".
+
+        Args:
+            resources (dict): resource paths (and for each path, service and method) to check the
+                access for. Format: { "/resource/path": {"service": "", "method": ""} }
+            jwt (str): user's valid jwt access token
+            username (str): username
+
+        Return:
+            dict: for each provided resource path, whether or not the user has access to the
+            provided method and service. Format: { "/resource/path": True/False }
+        """
+        mapping = self.auth_mapping(username, jwt)
+        if inspect.isawaitable(mapping):
+            mapping = await mapping
+
+        return {
+            input_resource_path: any(
+                is_path_prefix_of_path(authorized_resource_path, input_resource_path)
+                and any(
+                    e["service"] in [params.get("service"), "*"]
+                    and e["method"] in [params.get("method"), "*"]
+                    for e in access
+                )
+                for authorized_resource_path, access in mapping.items()
+            )
+            for input_resource_path, params in resources.items()
+        }
