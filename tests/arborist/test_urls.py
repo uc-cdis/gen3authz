@@ -230,9 +230,7 @@ async def test_can_user_access_resources(
         await arborist_client.can_user_access_resources(
             username="test-user",
             jwt="abc",
-            service="service1",
-            method="read",
-            resource_paths=[],
+            resources={"/a": {"service": "service1", "method": "read"}},
         )
 
     mock_arborist_request(
@@ -247,8 +245,8 @@ async def test_can_user_access_resources(
                             {"service": "service1", "method": "write"},
                         ],
                         "/d": [
-                            {"service": "service1", "method": "write"},
                             {"service": "service1", "method": "read"},
+                            {"service": "service2", "method": "write"},
                         ],
                     },
                 )
@@ -258,9 +256,12 @@ async def test_can_user_access_resources(
 
     res = arborist_client.can_user_access_resources(
         username="test-user",
-        service="service1",
-        method="read",
-        resource_paths=["/a", "/a/b", "/c", "/d"],
+        resources={
+            "/a": {"service": "service1", "method": "read"},
+            "/a/b": {"service": "service1", "method": "read"},
+            "/c": {"service": "service1", "method": "read"},
+            "/d": {"service": "service2", "method": "write"},
+        },
     )
     if use_async:
         res = await res

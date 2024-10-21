@@ -1098,43 +1098,38 @@ class BaseArboristClient(AuthzClient):
     @maybe_sync
     async def can_user_access_resources(
         self,
-        service: str,
-        method: str,
-        resource_paths: list,
+        resources: dict,
         username: str = "",
         jwt: str = "",
     ):
         """
         Using the user's authz mapping, return "true" for each resource path the user has access
-        to, and "false" for each resource path they don't have access to. Take into account that
+        to, and "false" for each resource path they don't have access to. Takes into account that
         if a user has access to "/a", they also have access to "/a/b".
 
         Args:
-            service (str): service name to check the access for
-            method (str): method to check the access for
-            resource_paths (list): resource paths to check the access for
+            resources (dict): resource paths (and for each path, service and method) to check the
+                access for. Format: { "/resource/path": {"service": "", "method": ""} }
             jwt (str): user's valid jwt access token
             username (str): username
 
         Return:
             dict: for each provided resource path, whether or not the user has access to the
-            provided method and service
+            provided method and service. Format: { "/resource/path": True/False }
         """
         mapping = self.auth_mapping(username, jwt)
         if inspect.isawaitable(mapping):
             mapping = await mapping
-        authorized_resource_paths = [
-            resource_path
-            for resource_path, access in mapping.items()
-            if any(
-                e["service"] in [service, "*"] and e["method"] in [method, "*"]
-                for e in access
-            )
-        ]
+
         return {
-            resource_path: any(
-                is_path_prefix_of_path(authorized_resource_path, resource_path)
-                for authorized_resource_path in authorized_resource_paths
+            input_resource_path: any(
+                is_path_prefix_of_path(authorized_resource_path, input_resource_path)
+                and any(
+                    e["service"] in [params.get("service"), "*"]
+                    and e["method"] in [params.get("method"), "*"]
+                    for e in access
+                )
+                for authorized_resource_path, access in mapping.items()
             )
-            for resource_path in resource_paths
+            for input_resource_path, params in resources.items()
         }
