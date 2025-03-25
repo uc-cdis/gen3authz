@@ -198,7 +198,7 @@ class BaseArboristClient(AuthzClient):
         if authz_provider:
             headers = kwargs.setdefault("headers", {})
             headers["X-AuthZ-Provider"] = authz_provider
-        async with self.client_cls() as client:
+        async with self.client_cls(Verify=False) as client:
             try:
                 rv = await client.request(method, url, **kwargs)
             except httpx.TimeoutException:
