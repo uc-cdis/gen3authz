@@ -170,6 +170,51 @@ async def test_grant_user_policy(arborist_client, mock_arborist_request, use_asy
     )
 
 
+async def test_grant_bulk_user_policy(
+    arborist_client, mock_arborist_request, use_async
+):
+    username = "johnsmith"
+    expires_at = int(
+        datetime.datetime(
+            year=2021,
+            month=11,
+            day=23,
+            hour=9,
+            minute=30,
+            second=1,
+            tzinfo=datetime.timezone.utc,
+        ).timestamp()
+    )
+    print(expires_at)
+    mock_post = mock_arborist_request(
+        {f"/user/{username}/bulk/policy": {"POST": (204, None)}}
+    )
+    if use_async:
+        assert (
+            await arborist_client.grant_bulk_user_policy(
+                username, ["test_policy 1", "test_policy 2"], expires_at=expires_at
+            )
+            == 204
+        )
+    else:
+        assert (
+            arborist_client.grant_bulk_user_policy(
+                username, ["test_policy 1", "test_policy 2"], expires_at=expires_at
+            )
+            == 204
+        )
+    mock_post.assert_called_with(
+        "post",
+        arborist_client._base_url + f"/user/{username}/bulk/policy",
+        data=None,
+        json=[
+            {"policy": "test_policy 1", "expires_at": "2021-11-23T09:30:01Z"},
+            {"policy": "test_policy 2", "expires_at": "2021-11-23T09:30:01Z"},
+        ],
+        timeout=10,
+    )
+
+
 async def test_update_user(arborist_client, mock_arborist_request, use_async):
     username = "johnsmith"
     new_username = "janesmith"
