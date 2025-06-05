@@ -846,14 +846,18 @@ class BaseArboristClient(AuthzClient):
         return True
 
     @maybe_sync
-    async def grant_bulk_user_policy(self, username, policy_ids):
+    async def grant_bulk_user_policy(self, username, policy_ids, expires_at=None):
         """
         MUST be user name, and not serial user ID
         """
         url = self._user_url + "/{}/bulk/policy".format(quote(username))
         request = []
         for policy_id in policy_ids:
-            request.append({"policy": policy_id})
+            policy_request = {"policy": policy_id}
+            if expires_at is not None:
+                expires = datetime.datetime.utcfromtimestamp(expires_at)
+                policy_request["expires_at"] = expires.isoformat() + "Z"
+            request.append(policy_request)
         response = await self.post(url, json=request, expect_json=False)
         if response.code != 204:
             self.logger.error(
