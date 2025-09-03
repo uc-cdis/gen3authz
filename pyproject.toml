@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gen3authz"
-version = "2.3.0"
+version = "2.3.1"
 description = "Gen3 authz client"
 authors = ["CTDS UChicago <cdis@uchicago.edu>"]
 license = "Apache-2.0"
