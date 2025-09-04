@@ -15,6 +15,7 @@ import backoff
 import contextvars
 import httpx
 from cdislogging import get_logger
+from gen3authz.client.arborist.errors import ArboristTimeoutError
 
 from ..arborist.errors import ArboristError, ArboristUnhealthyError
 from ..base import AuthzClient
@@ -201,7 +202,7 @@ class BaseArboristClient(AuthzClient):
         async with self.client_cls() as client:
             try:
                 rv = await client.request(method, url, **kwargs)
-            except httpx.TimeoutException:
+            except httpx.TimeoutException as e:
                 if retry:
                     if isinstance(retry, bool):
                         retry = {}
@@ -226,7 +227,7 @@ class BaseArboristClient(AuthzClient):
                         res = await res
                     rv = await client.request(method, url, **kwargs)
                 else:
-                    raise
+                    raise ArboristTimeoutError("Request to arborist timed out") from e
         return ArboristResponse(rv, expect_json=expect_json)
 
     def get(self, url, params=None, **kwargs):

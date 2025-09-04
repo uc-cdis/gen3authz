@@ -18,3 +18,7 @@ class ArboristUnhealthyError(InternalError, ArboristError):
         self.message = message or "could not reach arborist service"
         self.code = 500
         self.json = {"error": self.message, "code": self.code}
+
+
+class ArboristTimeoutError(Exception):
+    pass

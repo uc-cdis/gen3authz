@@ -88,3 +88,20 @@ def no_backoff_delay(monkeypatch):
     disable actually waiting at all in the tests.
     """
     monkeypatch.setattr(time, "sleep", lambda _: None)
+
+
+@pytest.fixture
+def timeout_client_cls():
+    """Fixture providing a client class that always raises httpx.TimeoutException."""
+
+    class _TimeoutClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def request(self, *args, **kwargs):
+            raise httpx.TimeoutException("simulated timeout")
+
+    return _TimeoutClient

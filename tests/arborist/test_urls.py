@@ -5,7 +5,8 @@ the correct URLs on the arborist API.
 
 import pytest
 import datetime
-from gen3authz.client.arborist.errors import ArboristError
+from gen3authz.client.arborist.errors import ArboristError, ArboristTimeoutError
+from httpx import TimeoutException
 
 pytestmark = pytest.mark.asyncio
 
@@ -321,3 +322,35 @@ async def test_can_user_access_resources(
         "/d/g": False,  # wrong method: user only has "write" access on service2, not "*" access
         "/e": True,  # matching service and method => True
     }
+
+
+@pytest.mark.asyncio
+async def test_request_timeout_raises_arborist_timeout(
+    arborist_client, monkeypatch, timeout_client_cls, use_async
+):
+    """
+    Test to ensure ArboristTimeoutError is raised when the httpx client times out
+    """
+    monkeypatch.setattr(arborist_client, "client_cls", timeout_client_cls)
+
+    if use_async:
+        with pytest.raises(ArboristTimeoutError):
+            await arborist_client.get_resource("/a/b/c")
+    else:
+        with pytest.raises(ArboristTimeoutError):
+            arborist_client.get_resource("/a/b/c")
+
+
+@pytest.mark.asyncio
+async def test_request_timeout_raises_arborist_timeout_preserve_exception(
+    arborist_client, monkeypatch, timeout_client_cls, use_async
+):
+    """
+    Test to ensure the root exception is preserved when timeout raises
+    """
+    monkeypatch.setattr(arborist_client, "client_cls", timeout_client_cls)
+
+    try:
+        await arborist_client.get_resource("/a/b/c")
+    except ArboristTimeoutError as e:
+        assert isinstance(e.__cause__, TimeoutException)
