@@ -225,7 +225,12 @@ class BaseArboristClient(AuthzClient):
                     )()
                     if inspect.isawaitable(res):
                         res = await res
-                    rv = await client.request(method, url, **kwargs)
+                    try:
+                        rv = await client.request(method, url, **kwargs)
+                    except httpx.TimeoutException as e:
+                        raise ArboristTimeoutError(
+                            "Request to arborist timed out"
+                        ) from e
                 else:
                     raise ArboristTimeoutError("Request to arborist timed out") from e
         return ArboristResponse(rv, expect_json=expect_json)
