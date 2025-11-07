@@ -218,6 +218,8 @@ class BaseArboristClient(AuthzClient):
                         # shorten the wait times between retries a little to fit our
                         # scale a little better (aim to give up within 10 s)
                         for n in backoff.fibo():
+                            if n is None:
+                                return
                             yield n / 2.0
 
                     res = backoff.on_predicate(wait_gen, on_giveup=giveup, **retry)(
