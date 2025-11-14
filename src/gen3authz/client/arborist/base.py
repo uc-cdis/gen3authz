@@ -214,7 +214,14 @@ class BaseArboristClient(AuthzClient):
                     def giveup():
                         raise ArboristUnhealthyError()
 
-                    res = backoff.on_predicate(backoff.expo, on_giveup=giveup, **retry)(
+                    def wait_gen():
+                        # shorten the wait times between retries a little to fit our
+                        # scale a little better (aim to give up within 10 s)
+                        for n in backoff.fibo():
+                            if n is not None:
+                                yield n / 2.0
+
+                    res = backoff.on_predicate(wait_gen, on_giveup=giveup, **retry)(
                         self.healthy
                     )()
                     if inspect.isawaitable(res):
