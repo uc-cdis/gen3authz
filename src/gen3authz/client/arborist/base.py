@@ -798,7 +798,13 @@ class BaseArboristClient(AuthzClient):
         return response
 
     @maybe_sync
-    async def delete_user(self, username):
+    async def delete_user(self, username) -> None:
+        """
+        Delete an existing user and all their access.
+
+        Args:
+            username (str): user to delete
+        """
         url = self._user_url + "/{}".format(quote(username))
         response = await self.delete(url, expect_json=False)
         if response.code != 204:
