@@ -1037,6 +1037,7 @@ class BaseArboristClient(AuthzClient):
         user_json = {"name": username}
         response = await self.post(self._user_url, json=user_json)
         if response.code == 409:
+            self.logger.info("user `{}` already exists".format(username))
             return None
         if "error" in response.json:
             msg = "could not create user `{}` in arborist: {}".format(
