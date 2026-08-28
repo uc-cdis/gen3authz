@@ -1086,7 +1086,7 @@ class BaseArboristClient(AuthzClient):
         url = "/".join((self._client_url, quote(client_id), "policy"))
         if current_policies.difference(policies):
             # if some policies must be removed, revoke all and re-grant later
-            response = await self.delete(url)
+            response = await self.delete(url, expect_json=False)
             if response.code != 204:
                 msg = (
                     "could not revoke policies "
