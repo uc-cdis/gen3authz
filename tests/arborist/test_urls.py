@@ -290,6 +290,42 @@ async def test_update_user_raises_error(
             response = arborist_client.update_user(username, new_username=new_username)
 
 
+async def test_update_client_revoke_and_regrant(
+    arborist_client, mock_arborist_request, use_async
+):
+    """
+    When the client has policies that are not in the desired list, ``update_client``
+    revokes all of the client's policies before re-granting the desired ones. The
+    revoke endpoint replies 204 with an empty body, which must not be treated as an
+    error (otherwise the policies are revoked but never re-granted).
+    """
+    client_id = "test-client-id"
+    mock_request = mock_arborist_request(
+        {
+            f"/client/{client_id}": {
+                "GET": (200, {"policies": ["policy_to_keep", "policy_to_remove"]})
+            },
+            f"/client/{client_id}/policy": {"DELETE": (204, None), "POST": (204, None)},
+        }
+    )
+    if use_async:
+        await arborist_client.update_client(client_id, ["policy_to_keep"])
+    else:
+        arborist_client.update_client(client_id, ["policy_to_keep"])
+    mock_request.assert_any_call(
+        "delete",
+        arborist_client._base_url + f"/client/{client_id}/policy",
+        timeout=10,
+    )
+    mock_request.assert_called_with(
+        "post",
+        arborist_client._base_url + f"/client/{client_id}/policy",
+        data=None,
+        json={"policy": "policy_to_keep"},
+        timeout=10,
+    )
+
+
 async def test_auth_request_positive(arborist_client, mock_arborist_request, use_async):
     mock_arborist_request({"/auth/request": {"POST": (200, {"auth": True})}})
     if use_async:
