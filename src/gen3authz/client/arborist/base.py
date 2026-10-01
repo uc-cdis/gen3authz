@@ -1121,6 +1121,27 @@ class BaseArboristClient(AuthzClient):
         )
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
+    
+    @maybe_sync
+    async def list_clients(self):
+        response = await self.get(self._client_url)
+        if response.code != 200:
+            self.logger.error("could not list clients: {}".format(response.error_msg))
+            raise ArboristError(response.error_msg, response.code)
+        clients = response.json
+        self.logger.info(
+            "got arborist clients: `{}`".format(json.dumps(clients, indent=2))
+        )
+        return clients
+
+    @maybe_sync
+    async def get_client(self, client_id):
+        response = await self.get("/".join((self._client_url, quote(client_id))))
+        if response.code == 404:
+            return None
+        if "error" in response.json:
+            raise ArboristError(response.error_msg, response.code)
+        return response.json
 
     @maybe_sync
     async def can_user_access_resources(
