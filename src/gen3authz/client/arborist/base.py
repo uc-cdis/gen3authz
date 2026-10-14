@@ -623,14 +623,17 @@ class BaseArboristClient(AuthzClient):
 
     @maybe_sync
     async def delete_role(self, role_id):
-        response = await self.delete(self._role_url + quote(role_id))
-        if response.code == 404:
-            # already doesn't exist, this is fine
-            return
-        elif response.code >= 400:
+        # arborist answers a successful delete with 204 and an empty body, so
+        # asking for JSON back would fail on exactly the happy path
+        response = await self.delete(
+            self._role_url + quote(role_id), expect_json=False
+        )
+        if response.code not in [204, 404]:
+            # 404 means it already doesn't exist, which is fine
             msg = "could not delete role in arborist: {}".format(response.error_msg)
             self.logger.error(msg)
             raise ArboristError(msg, response.code)
+        return True
 
     @maybe_sync
     async def get_policy(self, policy_id):
@@ -644,7 +647,17 @@ class BaseArboristClient(AuthzClient):
 
     @maybe_sync
     async def delete_policy(self, path):
-        return (await self.delete(self._policy_url + quote(path))).json
+        # see delete_role: 204 with no body is the success case here too
+        response = await self.delete(
+            self._policy_url + quote(path), expect_json=False
+        )
+        if response.code not in [204, 404]:
+            msg = "could not delete policy `{}` in arborist: {}".format(
+                path, response.error_msg
+            )
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
+        return True
 
     @maybe_sync
     async def create_policy(self, policy_json, skip_if_exists=True):
