@@ -335,7 +335,9 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def auth_request(self, jwt, service, methods, resources, user_id=None):
+    async def auth_request(
+        self, jwt, service, methods, resources, user_id=None, aud=None
+    ):
         """
         Args:
             jwt (str):
@@ -372,6 +374,13 @@ class BaseArboristClient(AuthzClient):
             data["user"] = {"user_id": user_id}
         elif jwt:
             data["user"] = {"token": jwt}
+
+        if aud:
+            if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
+                raise ValueError(
+                    f"`aud` must be a list of strings or None, got '{aud}'"
+                )
+            data["aud"] = aud
 
         response = await self.post(self._auth_url.rstrip("/") + "/request", json=data)
         if not response.successful:
@@ -1121,7 +1130,7 @@ class BaseArboristClient(AuthzClient):
         )
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
-    
+
     @maybe_sync
     async def list_clients(self):
         response = await self.get(self._client_url)
