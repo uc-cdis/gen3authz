@@ -25,6 +25,7 @@ async def test_get_resource_call(arborist_client, mock_arborist_request, use_asy
         timeout=10,
     )
 
+
 async def test_delete_resource_call(arborist_client, mock_arborist_request, use_async):
     mock_delete = mock_arborist_request({"/resource/a/b/c": {"DELETE": (204, None)}})
     if use_async:
@@ -36,8 +37,14 @@ async def test_delete_resource_call(arborist_client, mock_arborist_request, use_
         arborist_client._base_url + "/resource/a/b/c",
         timeout=10,
     )
-async def test_delete_resource_call_404_response(arborist_client, mock_arborist_request, use_async):
-    mock_delete = mock_arborist_request({"/resource/a/b/c": {"DELETE": (404, "this is the 404 response")}})
+
+
+async def test_delete_resource_call_404_response(
+    arborist_client, mock_arborist_request, use_async
+):
+    mock_delete = mock_arborist_request(
+        {"/resource/a/b/c": {"DELETE": (404, "this is the 404 response")}}
+    )
     if use_async:
         assert await arborist_client.delete_resource("/a/b/c") == True
     else:
@@ -47,8 +54,14 @@ async def test_delete_resource_call_404_response(arborist_client, mock_arborist_
         arborist_client._base_url + "/resource/a/b/c",
         timeout=10,
     )
-async def test_delete_resource_call_other_response_code(arborist_client, mock_arborist_request, use_async):
-    mock_delete = mock_arborist_request({"/resource/a/b/c": {"DELETE": (500, "this is the other response code")}})
+
+
+async def test_delete_resource_call_other_response_code(
+    arborist_client, mock_arborist_request, use_async
+):
+    mock_delete = mock_arborist_request(
+        {"/resource/a/b/c": {"DELETE": (500, "this is the other response code")}}
+    )
     if use_async:
         with pytest.raises(ArboristError):
             assert await arborist_client.delete_resource("/a/b/c") == True
@@ -110,6 +123,7 @@ async def test_create_resource_call(arborist_client, mock_arborist_request, use_
         timeout=10,
     )
 
+
 async def test_list_clients_call(arborist_client, mock_arborist_request, use_async):
     payload = {"clients": [{"id": "client-a"}]}
     mock_get = mock_arborist_request({"/client": {"GET": (200, payload)}})
@@ -125,10 +139,13 @@ async def test_list_clients_call(arborist_client, mock_arborist_request, use_asy
         timeout=10,
     )
 
+
 async def test_list_clients_raises_on_error_response(
     arborist_client, mock_arborist_request, use_async
 ):
-    mock_get = mock_arborist_request({"/client": {"GET": (500, {"error": {"message": "could not list"}})}})
+    mock_get = mock_arborist_request(
+        {"/client": {"GET": (500, {"error": {"message": "could not list"}})}}
+    )
     if use_async:
         with pytest.raises(ArboristError):
             await arborist_client.list_clients()
@@ -142,6 +159,7 @@ async def test_list_clients_raises_on_error_response(
         params=None,
         timeout=10,
     )
+
 
 async def test_get_client_call(arborist_client, mock_arborist_request, use_async):
     client_id = "client-123"
@@ -183,6 +201,7 @@ async def test_get_client_returns_none_for_404(
         params=None,
         timeout=10,
     )
+
 
 async def test_get_client_raises_on_error_response(
     arborist_client, mock_arborist_request, use_async
@@ -417,6 +436,57 @@ async def test_update_client_revoke_and_regrant(
         arborist_client._base_url + f"/client/{client_id}/policy",
         data=None,
         json={"policy": "policy_to_keep"},
+        timeout=10,
+    )
+
+
+async def test_get_client(arborist_client, mock_arborist_request, use_async):
+    client_id = "test-client-id"
+    client_json = {"clientID": client_id, "policies": ["test_policy"]}
+    mock_get = mock_arborist_request(
+        {f"/client/{client_id}": {"GET": (200, client_json)}}
+    )
+    if use_async:
+        assert await arborist_client.get_client(client_id) == client_json
+    else:
+        assert arborist_client.get_client(client_id) == client_json
+    mock_get.assert_called_with(
+        "get",
+        arborist_client._base_url + f"/client/{client_id}",
+        params=None,
+        follow_redirects=True,
+        timeout=10,
+    )
+
+
+async def test_get_client_not_found(arborist_client, mock_arborist_request, use_async):
+    """
+    ``get_client`` returns None when the client does not exist in arborist.
+    """
+    client_id = "test-client-id"
+    mock_arborist_request({})
+    if use_async:
+        assert await arborist_client.get_client(client_id) is None
+    else:
+        assert arborist_client.get_client(client_id) is None
+
+
+async def test_grant_client_policy(arborist_client, mock_arborist_request, use_async):
+    client_id = "test-client-id"
+    mock_post = mock_arborist_request(
+        {f"/client/{client_id}/policy": {"POST": (204, None)}}
+    )
+    if use_async:
+        assert (
+            await arborist_client.grant_client_policy(client_id, "test_policy") == 204
+        )
+    else:
+        assert arborist_client.grant_client_policy(client_id, "test_policy") == 204
+    mock_post.assert_called_with(
+        "post",
+        arborist_client._base_url + f"/client/{client_id}/policy",
+        data=None,
+        json={"policy": "test_policy"},
         timeout=10,
     )
 

@@ -1049,6 +1049,30 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
+    async def grant_client_policy(self, client_id, policy_id):
+        """
+        Grant a policy to a client without affecting the client's existing policies
+        (unlike `update_client`, which overwrites them).
+
+        Args:
+            client_id (str): Arborist client ID
+            policy_id (str): Arborist policy id
+        """
+        url = "/".join((self._client_url, quote(client_id), "policy"))
+        response = await self.post(url, json={"policy": policy_id}, expect_json=False)
+        if response.code != 204:
+            self.logger.error(
+                "could not grant policy `{}` to client `{}`: {}".format(
+                    policy_id, client_id, response.error_msg
+                )
+            )
+            return None
+        self.logger.info(
+            "granted policy `{}` to client `{}`".format(policy_id, client_id)
+        )
+        return response.code
+
+    @maybe_sync
     async def create_client(self, client_id, policies):
         response = await self.post(
             self._client_url, json=dict(clientID=client_id, policies=policies or [])
@@ -1121,7 +1145,7 @@ class BaseArboristClient(AuthzClient):
         )
         self.logger.info("deleted client {}".format(client_id))
         return response.code == 204
-    
+
     @maybe_sync
     async def list_clients(self):
         response = await self.get(self._client_url)
