@@ -330,6 +330,10 @@ class BaseArboristClient(AuthzClient):
         For given client, get mapping from the resources that this client can access
         to the actions on those resources for which it is authorized.
 
+        Args:
+            client_id (str): client ID
+            aud (list<str>): Expected receivers or uses of the token
+
         Return:
             dict: response JSON from arborist
         """
