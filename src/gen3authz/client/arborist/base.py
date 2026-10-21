@@ -19,7 +19,7 @@ from gen3authz.client.arborist.errors import ArboristTimeoutError
 
 from ..arborist.errors import ArboristError, ArboristUnhealthyError
 from ..base import AuthzClient
-from ...utils import is_path_prefix_of_path
+from ...utils import is_path_prefix_of_path, check_audience
 from ... import string_types
 
 
@@ -308,10 +308,7 @@ class BaseArboristClient(AuthzClient):
         headers = {}
         data = {}
         if aud:
-            if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
-                raise ValueError(
-                    f"`aud` must be a list of strings or None, got '{aud}'"
-                )
+            check_audience(aud)
             data["aud"] = aud
         if username:
             data["username"] = username
@@ -338,10 +335,7 @@ class BaseArboristClient(AuthzClient):
         """
         data = {"clientID": client_id}
         if aud:
-            if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
-                raise ValueError(
-                    f"`aud` must be a list of strings or None, got '{aud}'"
-                )
+            check_audience(aud)
             data["aud"] = aud
         response = await self.post(self._auth_url.rstrip("/") + "/mapping", json=data)
         if not response.successful:
@@ -392,10 +386,7 @@ class BaseArboristClient(AuthzClient):
             data["user"] = {"token": jwt}
 
         if aud:
-            if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
-                raise ValueError(
-                    f"`aud` must be a list of strings or None, got '{aud}'"
-                )
+            check_audience(aud)
             data["aud"] = aud
 
         response = await self.post(self._auth_url.rstrip("/") + "/request", json=data)

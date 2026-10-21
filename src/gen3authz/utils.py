@@ -37,3 +37,8 @@ def is_path_prefix_of_path(resource_prefix: str, resource_path: str) -> bool:
         if path_list[i] != prefix_item:
             return False
     return True
+
+
+def check_audience(aud):
+    if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
+        raise ValueError(f"`aud` must be a list of strings or None, got '{aud}'")
