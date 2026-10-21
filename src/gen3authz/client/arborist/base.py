@@ -306,21 +306,21 @@ class BaseArboristClient(AuthzClient):
         assert not (username and jwt), "Both 'username' and 'jwt' were provided"
 
         headers = {}
-        json = {}
+        data = {}
         if aud:
             if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
                 raise ValueError(
                     f"`aud` must be a list of strings or None, got '{aud}'"
                 )
-            json["aud"] = aud
+            data["aud"] = aud
         if username:
-            json["username"] = username
+            data["username"] = username
         elif jwt:
-            json["Authorization"] = f"bearer {jwt}"
+            data["Authorization"] = f"bearer {jwt}"
 
         response = await self.post(
             self._auth_url.rstrip("/") + "/mapping",
-            json=json,
+            json=data,
             headers=headers,
         )
         if not response.successful:
@@ -328,7 +328,7 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
-    async def client_auth_mapping(self, client_id):
+    async def client_auth_mapping(self, client_id, aud: list = None):
         """
         For given client, get mapping from the resources that this client can access
         to the actions on those resources for which it is authorized.
@@ -337,6 +337,12 @@ class BaseArboristClient(AuthzClient):
             dict: response JSON from arborist
         """
         data = {"clientID": client_id}
+        if aud:
+            if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
+                raise ValueError(
+                    f"`aud` must be a list of strings or None, got '{aud}'"
+                )
+            data["aud"] = aud
         response = await self.post(self._auth_url.rstrip("/") + "/mapping", json=data)
         if not response.successful:
             raise ArboristError(response.error_msg, response.code)
