@@ -290,31 +290,39 @@ class BaseArboristClient(AuthzClient):
         return response.code == 200
 
     @maybe_sync
-    async def auth_mapping(self, username: str = "", jwt: str = ""):
+    async def auth_mapping(self, username: str = "", jwt: str = "", aud: list = None):
         """
         For given user, get mapping from the resources that this user can access
         to the actions on those resources for which they are authorized.
 
         Args:
-            jwt (str): user's valid jwt access token
+            jwt (str): user's valid jwt access token. Makes an anonymous call if not provided
             username (str): username
+            aud (list<str>): Expected receivers or uses of the token
 
         Return:
             dict: response JSON from arborist
         """
         assert not (username and jwt), "Both 'username' and 'jwt' were provided"
+
+        headers = {}
+        json = {}
+        if aud:
+            if not isinstance(aud, list) or any(not isinstance(e, str) for e in aud):
+                raise ValueError(
+                    f"`aud` must be a list of strings or None, got '{aud}'"
+                )
+            json["aud"] = aud
         if username:
-            response = await self.post(
-                self._auth_url.rstrip("/") + "/mapping",
-                json={"username": username},
-            )
+            json["username"] = username
         elif jwt:
-            response = await self.post(
-                self._auth_url.rstrip("/") + "/mapping",
-                headers={"Authorization": f"bearer {jwt}"},
-            )
-        else:  # anonymous call
-            response = await self.post(self._auth_url.rstrip("/") + "/mapping")
+            json["Authorization"] = f"bearer {jwt}"
+
+        response = await self.post(
+            self._auth_url.rstrip("/") + "/mapping",
+            json=json,
+            headers=headers,
+        )
         if not response.successful:
             raise ArboristError(response.error_msg, response.code)
         return response.json
@@ -354,6 +362,8 @@ class BaseArboristClient(AuthzClient):
             user_id (str):
                 User's user id that corresponds to the user id in the arborist usr table.
                 NOTE: user_id overrides any jwt token provided
+            aud (list<str>):
+                Expected receivers or uses of the token
 
         Return:
             bool: authorization response
@@ -1158,6 +1168,7 @@ class BaseArboristClient(AuthzClient):
         resources: dict,
         username: str = "",
         jwt: str = "",
+        aud: list = None,
     ):
         """
         Using the user's authz mapping, return "true" for each resource path the user has access
@@ -1174,7 +1185,7 @@ class BaseArboristClient(AuthzClient):
             dict: for each provided resource path, whether or not the user has access to the
             provided method and service. Format: { "/resource/path": True/False }
         """
-        mapping = self.auth_mapping(username, jwt)
+        mapping = self.auth_mapping(username=username, jwt=jwt, aud=aud)
         if inspect.isawaitable(mapping):
             mapping = await mapping
 
