@@ -313,7 +313,7 @@ class BaseArboristClient(AuthzClient):
         if username:
             data["username"] = username
         elif jwt:
-            data["Authorization"] = f"bearer {jwt}"
+            headers["Authorization"] = f"bearer {jwt}"
 
         response = await self.post(
             self._auth_url.rstrip("/") + "/mapping",
