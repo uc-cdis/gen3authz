@@ -491,6 +491,27 @@ async def test_grant_client_policy(arborist_client, mock_arborist_request, use_a
     )
 
 
+async def test_grant_client_policy_error(
+    arborist_client, mock_arborist_request, use_async
+):
+    """
+    ``grant_client_policy`` raises an exception when the policy could not be granted.
+    """
+    client_id = "test-client-id"
+    mock_arborist_request(
+        {
+            f"/client/{client_id}/policy": {
+                "POST": (400, {"error": {"message": "no such policy", "code": 400}})
+            }
+        }
+    )
+    with pytest.raises(ArboristError):
+        if use_async:
+            await arborist_client.grant_client_policy(client_id, "test_policy")
+        else:
+            arborist_client.grant_client_policy(client_id, "test_policy")
+
+
 async def test_auth_request_positive(arborist_client, mock_arborist_request, use_async):
     mock_arborist_request({"/auth/request": {"POST": (200, {"auth": True})}})
     if use_async:

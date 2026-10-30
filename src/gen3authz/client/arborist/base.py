@@ -1077,16 +1077,18 @@ class BaseArboristClient(AuthzClient):
         Args:
             client_id (str): Arborist client ID
             policy_id (str): Arborist policy id
+
+        Raises:
+            ArboristError: if the policy could not be granted
         """
         url = "/".join((self._client_url, quote(client_id), "policy"))
         response = await self.post(url, json={"policy": policy_id}, expect_json=False)
         if response.code != 204:
-            self.logger.error(
-                "could not grant policy `{}` to client `{}`: {}".format(
-                    policy_id, client_id, response.error_msg
-                )
+            msg = "could not grant policy `{}` to client `{}` in arborist: {}".format(
+                policy_id, client_id, response.error_msg
             )
-            return None
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
         self.logger.info(
             "granted policy `{}` to client `{}`".format(policy_id, client_id)
         )
@@ -1146,16 +1148,9 @@ class BaseArboristClient(AuthzClient):
 
         # grant missing policies
         for policy in policies:
-            response = await self.post(url, json=dict(policy=policy), expect_json=False)
-            if response.code != 204:
-                msg = (
-                    "could not grant policy `{}` "
-                    "to client `{}` in arborist: {}".format(
-                        policy, client_id, response.error_msg
-                    )
-                )
-                self.logger.error(msg)
-                raise ArboristError(msg, response.code)
+            res = self.grant_client_policy(client_id, policy)
+            if inspect.isawaitable(res):  # handle grant_client_policy maybe_sync
+                await res
         self.logger.info("updated policies for client {}".format(client_id))
 
     @maybe_sync
