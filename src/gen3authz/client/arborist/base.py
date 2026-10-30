@@ -1069,6 +1069,32 @@ class BaseArboristClient(AuthzClient):
         return response.json
 
     @maybe_sync
+    async def grant_client_policy(self, client_id, policy_id):
+        """
+        Grant a policy to a client without affecting the client's existing policies
+        (unlike `update_client`, which overwrites them).
+
+        Args:
+            client_id (str): Arborist client ID
+            policy_id (str): Arborist policy id
+
+        Raises:
+            ArboristError: if the policy could not be granted
+        """
+        url = "/".join((self._client_url, quote(client_id), "policy"))
+        response = await self.post(url, json={"policy": policy_id}, expect_json=False)
+        if response.code != 204:
+            msg = "could not grant policy `{}` to client `{}` in arborist: {}".format(
+                policy_id, client_id, response.error_msg
+            )
+            self.logger.error(msg)
+            raise ArboristError(msg, response.code)
+        self.logger.info(
+            "granted policy `{}` to client `{}`".format(policy_id, client_id)
+        )
+        return response.code
+
+    @maybe_sync
     async def create_client(self, client_id, policies):
         response = await self.post(
             self._client_url, json=dict(clientID=client_id, policies=policies or [])
@@ -1122,16 +1148,9 @@ class BaseArboristClient(AuthzClient):
 
         # grant missing policies
         for policy in policies:
-            response = await self.post(url, json=dict(policy=policy), expect_json=False)
-            if response.code != 204:
-                msg = (
-                    "could not grant policy `{}` "
-                    "to client `{}` in arborist: {}".format(
-                        policy, client_id, response.error_msg
-                    )
-                )
-                self.logger.error(msg)
-                raise ArboristError(msg, response.code)
+            res = self.grant_client_policy(client_id, policy)
+            if inspect.isawaitable(res):  # handle grant_client_policy maybe_sync
+                await res
         self.logger.info("updated policies for client {}".format(client_id))
 
     @maybe_sync
